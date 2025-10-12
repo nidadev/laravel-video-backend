@@ -58,4 +58,19 @@ public function getJWTCustomClaims()
 {
     return [];
 }
+
+public function subscriptions()
+{
+    return $this->hasMany(Subscription::class);
+}
+
+public function activeSubscription()
+{
+    return $this->subscriptions()->active()->first();
+}
+
+public function hasActiveSubscription()
+{
+    return $this->activeSubscription() !== null;
+}
 }

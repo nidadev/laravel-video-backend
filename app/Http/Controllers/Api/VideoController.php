@@ -237,4 +237,30 @@ public function destroy($id)
         ]);
     }
 
+    public function show(Request $request, $id)
+{
+    $video = Video::with('files')->findOrFail($id);
+    $user = $request->user();
+
+    $ads_enabled = true;
+
+    if ($user && $user->hasActiveSubscription()) {
+        $ads_enabled = false;
+    }
+
+    return response()->json([
+        'video_title' => $video->title, // optional
+        'ads_enabled' => $ads_enabled,
+        'episodes' => $video->files->map(function ($file) {
+            return [
+                'episode_id' => $file->id,
+                'title' => $file->variant, // optional
+                'url' => $file->file_url,
+            ];
+        }),
+    ]);
+}
+
+
+
 }
