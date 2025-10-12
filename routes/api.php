@@ -28,8 +28,11 @@ Route::middleware('auth:sanctum')->group(function () {
  // Route::post('/videos/upload', [VideoController::class, 'upload']);
     Route::post('/videos', [VideoController::class, 'store']);
     Route::get('/videos', [VideoController::class, 'index']);
+    Route::get('/video/{id}', [VideoController::class, 'show']);
     Route::post('/videos/{id}/like', [VideoController::class, 'like']);
     Route::post('/logout', [AuthController::class, 'logout']);
+      Route::post('/subscribe', [SubscriptionController::class, 'purchase']);
+    Route::get('/subscription', [SubscriptionController::class, 'current']);
     
 
 });
@@ -40,6 +43,8 @@ Route::middleware(['auth:sanctum', 'is_admin1'])->group(function () {
     Route::put('/admin/videos/{id}', [VideoController::class, 'update']);
     Route::delete('/admin/videos/{id}', [VideoController::class, 'destroy']);
     Route::post('admin/videos/{id}/status', [VideoController::class, 'changeStatus']);
+
+   
 
      Route::apiResource('admin/categories', CategoryController::class);
 });
