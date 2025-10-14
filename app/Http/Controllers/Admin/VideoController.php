@@ -106,6 +106,8 @@ public function store(Request $request)
         'description' => 'nullable|string',
         'category_id' => 'required|exists:categories,id',
 
+        'subcategory' => 'nullable|string|max:100', // ✅ Added subcategory
+
         'thumbnail' => 'nullable|image|max:2048',
 
         'video_files' => 'required|array|min:1',
@@ -118,11 +120,11 @@ public function store(Request $request)
         'drms.*' => 'nullable|in:0,1',
 
         'durations' => 'nullable|array',
-        'durations.*' => 'nullable|string|max:20', // Accept string duration e.g. "3600" or "01:00:00"
+        'durations.*' => 'nullable|string|max:20',
     ]);
 
     try {
-        // Upload thumbnail to S3 if provided
+        // ✅ Upload thumbnail to S3 if provided
         $thumbnailPath = null;
         if ($request->hasFile('thumbnail')) {
             $thumbnailPath = $request->file('thumbnail')->store('thumbnails', 's3');
@@ -132,17 +134,18 @@ public function store(Request $request)
             Storage::disk('s3')->setVisibility($thumbnailPath, 'public');
         }
 
-        // Create the main video record
+        // ✅ Create the main video record (includes subcategory)
         $video = Video::create([
             'title' => $request->title,
             'description' => $request->description,
             'category_id' => $request->category_id,
+            'subcategory' => $request->subcategory, // ✅ Save subcategory
             'thumbnail' => $thumbnailPath ? Storage::disk('s3')->url($thumbnailPath) : null,
             'status' => 'ready',
             'created_by' => auth()->id() ?? auth('admin')->id(),
         ]);
 
-        // Handle episodes / variant video uploads
+        // ✅ Handle episodes / variant video uploads
         $files = $request->file('video_files');
         $variants = $request->input('variants', []);
         $drms = $request->input('drms', []);
@@ -161,14 +164,13 @@ public function store(Request $request)
             }
 
             Storage::disk('s3')->setVisibility($path, 'public');
-            //dd($durations[$index]);
 
             $video->files()->create([
                 'variant' => $variants[$index] ?? 'Episode ' . ($index + 1),
                 'file_url' => Storage::disk('s3')->url($path),
                 'manifest_url' => null,
                 'drm' => isset($drms[$index]) ? (bool) $drms[$index] : false,
-                'duration' => $durations[$index] ?? null, // Save duration here
+                'duration' => $durations[$index] ?? null,
                 'meta' => json_encode([
                     'original_name' => $file->getClientOriginalName(),
                     'size' => $file->getSize(),
@@ -177,7 +179,9 @@ public function store(Request $request)
             ]);
         }
 
-        return redirect()->route('admin.videos')->with('success', 'Video and episodes uploaded successfully.');
+        return redirect()
+            ->route('admin.videos')
+            ->with('success', 'Video and episodes uploaded successfully.');
     } catch (\Exception $e) {
         \Log::error('Video upload failed: ' . $e->getMessage());
 
@@ -186,6 +190,7 @@ public function store(Request $request)
         ]);
     }
 }
+
 
     public function destroy($id)
 {
@@ -210,6 +215,7 @@ public function update(Request $request, $id)
         'title' => 'required|string|max:255',
         'description' => 'required|string',
         'category_id' => 'filled|exists:categories,id',
+        'subcategory' => 'nullable|string|max:100',
         'status' => 'required|in:processing,ready,published,disabled',
         'thumbnail' => 'nullable|image|max:2048',
 
@@ -300,17 +306,20 @@ public function update(Request $request, $id)
         ]);
     }
 
-    // 🔹 Update Video Info
+    // 🔹 Update Video Info (with subcategory)
     $video->update([
         'title' => $request->title,
         'description' => $request->description,
         'category_id' => $request->category_id,
+        'subcategory' => $request->subcategory,  // ✅ added
         'status' => $request->status,
+        'thumbnail' => $video->thumbnail, // in case updated above
     ]);
 
     return redirect()
         ->route('admin.videos.edit', $video->id)
         ->with('success', 'Video updated successfully!');
 }
+
 
 }
