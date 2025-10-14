@@ -35,26 +35,39 @@ public function register(Request $request)
  public function login(Request $request)
     {
         $request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
+            //'email' => 'required|email',
+            //'password' => 'required',
+            'phone' => 'required|string'
         ]);
 
-        $user = User::where('email', $request->email)->first();
+        //$user = User::where('email', $request->email)->first();
+            $user = User::where('phone', $request->phone)->first();
 
-        if (! $user || ! Hash::check($request->password, $user->password)) {
+
+        if (! $user /*|| ! Hash::check($request->password, $user->password)*/) {
             throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
+                //'email' => ['The provided credentials are incorrect.'],
+                                'phone' => ['The provided credentials are incorrect.'],
+
             ]);
         }
 
-        $token = $user->createToken('api-token')->plainTextToken;
+      // Create token
+    $tokenResult = $user->createToken('api-token');
 
-        return response()->json([
-            'message' => 'Login successful',
-            'token' => $token,
-            'user' => $user,
-        ]);
-    }
+    // Access the token model instance to set expiry
+    $token = $tokenResult->accessToken;
+    $token->expires_at = now()->addDay();
+    $token->save();
+
+    return response()->json([
+        'message' => 'Login successful',
+        'token' => $tokenResult->plainTextToken,  // send the plain token string to client
+        'user' => $user,
+        'expires_at' => $token->expires_at->toDateTimeString(),
+    ]);
+
+}
 
     public function logout(Request $request)
     {
