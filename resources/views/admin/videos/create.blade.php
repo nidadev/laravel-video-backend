@@ -27,6 +27,19 @@
         @endforeach
       </select>
     </div>
+    <!-- ✅ Subcategory -->
+    <div class="mb-3">
+      <label class="form-label">Subcategory</label>
+      <select name="subcategory" class="form-select">
+        <option value="">Select Subcategory</option>
+        @foreach (['Drama', 'Action', 'Comedy', 'Adventure', 'Romance', 'Thriller', 'Horror'] as $subcat)
+          <option value="{{ $subcat }}" {{ old('subcategory') == $subcat ? 'selected' : '' }}>
+            {{ $subcat }}
+          </option>
+        @endforeach
+      </select>
+      @error('subcategory') <div class="text-danger small">{{ $message }}</div> @enderror
+    </div>
 
     <div class="mb-3">
       <label>Thumbnail</label>

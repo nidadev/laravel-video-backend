@@ -40,6 +40,19 @@
           </select>
           @error('category_id') <div class="text-danger small">{{ $message }}</div> @enderror
         </div>
+<!-- Subcategory -->
+<div class="mb-3">
+  <label class="form-label">Subcategory</label>
+  <select name="subcategory" class="form-select" required>
+    <option value="">Select Subcategory</option>
+    @foreach(['Drama', 'Action', 'Comedy', 'Adventure', 'Romance', 'Thriller', 'Horror'] as $sub)
+      <option value="{{ $sub }}" {{ old('subcategory', $video->subcategory ?? '') == $sub ? 'selected' : '' }}>
+        {{ $sub }}
+      </option>
+    @endforeach
+  </select>
+  @error('subcategory') <div class="text-danger small">{{ $message }}</div> @enderror
+</div>
 
         <!-- Status -->
         <div class="mb-3">
