@@ -24,7 +24,7 @@ Route::middleware('auth:sanctum')->get('/profile', function (Request $request) {
     return $request->user();
 });
 
-Route::middleware('auth:sanctum')->group(function () {
+/*Route::middleware(['auth:sanctum','check.token.expiry'])->group(function () {
  // Route::post('/videos/upload', [VideoController::class, 'upload']);
     Route::post('/videos', [VideoController::class, 'store']);
     Route::get('/videos', [VideoController::class, 'index']);
@@ -35,6 +35,23 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/subscription', [SubscriptionController::class, 'current']);
     
 
+});*/
+
+Route::middleware(['jwt.auth'])->group(function () {
+    
+    // User Routes
+    //Route::get('/user-profile', [UserController::class, 'profile']);
+    Route::post('/logout', [AuthController::class, 'logout']);
+
+    // Video Routes
+    //Route::post('/videos', [VideoController::class, 'store']);
+    Route::get('/videos', [VideoController::class, 'index']);
+    Route::get('/videos/{id}', [VideoController::class, 'show']);
+    Route::post('/videos/{id}/like', [VideoController::class, 'like']);
+
+    // Subscription
+    Route::post('/subscribe', [SubscriptionController::class, 'purchase']);
+    Route::get('/subscription', [SubscriptionController::class, 'current']);
 });
 
 Route::middleware(['auth:sanctum', 'is_admin1'])->group(function () {
@@ -42,9 +59,7 @@ Route::middleware(['auth:sanctum', 'is_admin1'])->group(function () {
     Route::get('/admin/videos', [VideoController::class, 'index']);
     Route::put('/admin/videos/{id}', [VideoController::class, 'update']);
     Route::delete('/admin/videos/{id}', [VideoController::class, 'destroy']);
-    Route::post('admin/videos/{id}/status', [VideoController::class, 'changeStatus']);
-
-   
+    Route::post('admin/videos/{id}/status', [VideoController::class, 'changeStatus']);  
 
      Route::apiResource('admin/categories', CategoryController::class);
 });
@@ -54,8 +69,5 @@ Route::prefix('auth')->group(function () {
     Route::post('verify-otp', [OtpController::class, 'verifyOtp']);
 });
 
-Route::middleware(['jwt.auth'])->group(function () {
-    Route::get('/user-profile', [UserController::class, 'profile']);
-    // other secured routes
-});
+
 

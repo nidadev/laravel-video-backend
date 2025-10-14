@@ -34,6 +34,8 @@ return Application::configure(basePath: dirname(__DIR__))
         'is_admin1' => \App\Http\Middleware\IsAdmin::class,
         'admin.auth' => \App\Http\Middleware\AdminAuth::class,
         'jwt.auth' => \Tymon\JWTAuth\Http\Middleware\Authenticate::class,
+            'check.token.expiry' => \App\Http\Middleware\CheckTokenExpiry::class,
+
     ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

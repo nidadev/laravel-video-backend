@@ -82,12 +82,17 @@ class OtpController extends Controller
         // Delete all OTPs for this user
         Otp::where('phone', $request->phone)->delete();
 
-        // 🔐 Return JWT token
-        $token = JWTAuth::fromUser($user);
+       // 🕒 Token lifetime = 7 days (in minutes)
+    JWTAuth::factory()->setTTL(10080);
 
-        return response()->json([
-            'token' => $token,
-            'user' => $user,
-        ]);
+    // 🔐 Generate JWT
+    $token = JWTAuth::fromUser($user);
+
+    return response()->json([
+        'token' => $token,
+        'user' => $user,
+        'expires_in' => JWTAuth::factory()->getTTL() * 60, // seconds
+        'token_type' => 'bearer',
+    ]);
     }
 }
