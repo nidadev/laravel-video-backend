@@ -21,7 +21,7 @@
     <h4 class="p-3">Admin Panel</h4>
     <a href="{{ route('admin.dashboard') }}">🏠 Dashboard</a>
     <a href="{{ route('admin.videos') }}">🎬 Videos</a>
-    <a href="{{ url('/logout') }}">🚪 Logout</a>
+    <a href="{{ route('admin.logout') }}">🚪 Logout</a>
   </div>
 
   <div class="content">
