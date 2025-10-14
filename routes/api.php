@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\VideoController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\Auth\OtpController;
+use App\Http\Controllers\Api\SubscriptionController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -52,6 +53,11 @@ Route::middleware(['jwt.auth'])->group(function () {
     // Subscription
     Route::post('/subscribe', [SubscriptionController::class, 'purchase']);
     Route::get('/subscription', [SubscriptionController::class, 'current']);
+
+    //payment
+
+     Route::post('/payment/checkout', [PaymentController::class, 'createCheckoutSession']);
+    Route::get('/payment/success', [PaymentController::class, 'paymentSuccess']);
 });
 
 Route::middleware(['auth:sanctum', 'is_admin1'])->group(function () {

@@ -41,4 +41,9 @@ return [
     'from' => env('TWILIO_PHONE_NUMBER'),
 ],
 
+'stripe' => [
+    'secret' => env('STRIPE_SECRET'),
+    'public' => env('STRIPE_PUBLIC'),
+],
+
 ];

@@ -1,8 +1,12 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
 
 use Illuminate\Http\Request;
+use App\Models\Plan;
+use App\Models\Subscription;
 
 class SubscriptionController extends Controller
 {
@@ -31,6 +35,7 @@ class SubscriptionController extends Controller
         return response()->json([
             'message' => 'Subscription purchased successfully',
             'subscription' => $subscription,
+            'price' => $plan->price,
         ]);
     }
 
