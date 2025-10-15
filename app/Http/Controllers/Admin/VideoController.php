@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\Video;
 use App\Models\Category;
 use Illuminate\Support\Facades\Storage;
+use Aws\S3\S3Client;
 
 class VideoController extends Controller
 {
@@ -207,7 +208,7 @@ public function edit($id)
     return view('admin.videos.edit', compact('video', 'categories'));
 }
 
-public function update(Request $request, $id)
+/*public function update(Request $request, $id)
 {
     $video = Video::with('files')->findOrFail($id);
 
@@ -319,7 +320,193 @@ public function update(Request $request, $id)
     return redirect()
         ->route('admin.videos.edit', $video->id)
         ->with('success', 'Video updated successfully!');
+}*/
+
+public function update(Request $request, $id)
+{
+    $video = Video::with('files')->findOrFail($id);
+
+    $request->validate([
+        'title' => 'required|string|max:255',
+        'description' => 'nullable|string',
+        'category_id' => 'required|exists:categories,id',
+        'subcategory' => 'nullable|string|max:100',
+        'status' => 'required|string',
+        'thumbnail' => 'nullable|string', // presigned S3 URL
+        'videos' => 'nullable|json',
+        'delete_files' => 'nullable|array',
+    ]);
+
+    try {
+        // ✅ Update main video info
+        $video->update([
+            'title' => $request->title,
+            'description' => $request->description,
+            'category_id' => $request->category_id,
+            'subcategory' => $request->subcategory,
+            'status' => $request->status,
+            'thumbnail' => $request->thumbnail ?: $video->thumbnail,
+        ]);
+
+        // ✅ Delete marked files
+        if ($request->filled('delete_files')) {
+            $video->files()->whereIn('id', $request->delete_files)->delete();
+        }
+
+        // ✅ Update existing file data (variants/duration/drm)
+        if ($request->has('existing_files')) {
+            foreach ($request->existing_files as $fileData) {
+                if (isset($fileData['id'])) {
+                    $file = $video->files()->find($fileData['id']);
+                    if ($file) {
+                        $file->update([
+                            'variant' => $fileData['variant'] ?? $file->variant,
+                            'duration' => $fileData['duration'] ?? $file->duration,
+                            'drm' => $fileData['drm'] ?? $file->drm,
+                        ]);
+                    }
+                }
+            }
+        }
+
+        // ✅ Handle new uploaded videos (from S3)
+        if ($request->filled('videos')) {
+            $newVideos = json_decode($request->videos, true);
+            foreach ($newVideos as $file) {
+                $video->files()->create([
+                    'variant' => $file['variant'] ?? 'Default',
+                    'file_url' => $file['file_url'],
+                    'manifest_url' => null,
+                    'drm' => $file['drm'] ?? false,
+                    'duration' => $file['duration'] ?? null,
+                    'meta' => [
+                        'original_name' => $file['original_name'] ?? null,
+                        'size' => $file['size'] ?? null,
+                        'mime' => $file['mime'] ?? null,
+                    ],
+                ]);
+            }
+        }
+
+        return redirect()->route('admin.videos.edit', $video->id)
+            ->with('success', '✅ Video updated successfully!');
+    } catch (\Exception $e) {
+        \Log::error('Video update failed: ' . $e->getMessage());
+        return back()->with('error', 'Failed to update video: ' . $e->getMessage());
+    }
 }
+
+
+public function createPresigned()
+{
+    $categories = Category::all();
+    return view('admin.videos.upload_presigned', compact('categories'));
+}
+
+public function generatePresignedUrl(Request $request)
+{
+    $request->validate([
+        'filename' => 'required|string',
+        'content_type' => 'required|string',
+        'type' => 'nullable|string|in:video,thumbnail', // 👈 NEW
+    ]);
+
+    try {
+        $s3 = Storage::disk('s3')->getClient();
+        $bucket = config('filesystems.disks.s3.bucket');
+
+        // 👇 Determine folder based on upload type
+        $folder = $request->type === 'thumbnail' ? 'thumbnails/' : 'videos/';
+        $key = $folder . uniqid() . '-' . $request->filename;
+
+        $cmd = $s3->getCommand('PutObject', [
+            'Bucket' => $bucket,
+            'Key' => $key,
+            'ContentType' => $request->content_type,
+        ]);
+
+        // Presigned URL valid for 20 minutes
+        $presignedRequest = $s3->createPresignedRequest($cmd, '+20 minutes');
+        $presignedUrl = (string) $presignedRequest->getUri();
+
+        return response()->json([
+            'url' => $presignedUrl,
+            'file_url' => Storage::disk('s3')->url($key),
+        ]);
+    } catch (\Exception $e) {
+        \Log::error('Presigned URL generation failed', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+
+        return response()->json([
+            'error' => 'Failed to generate presigned URL',
+            'details' => $e->getMessage(),
+        ], 500);
+    }
+}
+
+public function storePresigned(Request $request)
+{
+    $request->validate([
+        'title' => 'required|string|max:255',
+        'description' => 'nullable|string',
+        'category_id' => 'required|exists:categories,id',
+        'subcategory' => 'nullable|string|max:100',
+        'thumbnail' => 'nullable|string',
+        'videos' => 'required|array|min:1',
+        'videos.*.file_url' => 'required|string',
+        'videos.*.variant' => 'nullable|string|max:255',
+        'videos.*.drm' => 'nullable|boolean',
+        'videos.*.duration' => 'nullable|string|max:50',
+        'videos.*.original_name' => 'nullable|string',
+        'videos.*.size' => 'nullable|numeric',
+        'videos.*.mime' => 'nullable|string',
+    ]);
+
+    try {
+        // ✅ Create main Video record
+        $video = Video::create([
+            'title' => $request->title,
+            'description' => $request->description,
+            'category_id' => $request->category_id,
+            'subcategory' => $request->subcategory,
+             'thumbnail' => $request->thumbnail, // ✅ added here
+            'status' => 'ready',
+            'created_by' => auth()->id() ?? auth('admin')->id(),
+        ]);
+
+        // ✅ Save uploaded file metadata
+        foreach ($request->videos as $file) {
+            $video->files()->create([
+                'variant' => $file['variant'] ?? 'Default',
+                'file_url' => $file['file_url'],
+                'manifest_url' => null,
+                'drm' => $file['drm'] ?? false,
+                'duration' => $file['duration'] ?? null,
+                'meta' => [
+                    'original_name' => $file['original_name'] ?? null,
+                    'size' => $file['size'] ?? null,
+                    'mime' => $file['mime'] ?? null,
+                ],
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => '✅ Video and metadata saved successfully!',
+            'video_id' => $video->id,
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Presigned store failed: '.$e->getMessage());
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+}
+
 
 
 }
