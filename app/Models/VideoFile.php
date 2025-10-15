@@ -13,6 +13,7 @@ class VideoFile extends Model
     protected $casts = [
         'meta' => 'array',
         'drm' => 'boolean',
+        'duration' => 'string',
     ];
 
 
