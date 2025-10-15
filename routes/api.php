@@ -7,6 +7,9 @@ use App\Http\Controllers\Api\VideoController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\Auth\OtpController;
 use App\Http\Controllers\Api\SubscriptionController;
+use App\Http\Controllers\Api\PaymentController;
+use App\Http\Controllers\Api\PaymentWebhookController;
+
 
 Route::get('/user', function (Request $request) {
     return $request->user();

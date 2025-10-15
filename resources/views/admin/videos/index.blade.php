@@ -6,7 +6,7 @@
   <!-- Page Header -->
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h2>🎬 All Videos</h2>
-    <a href="{{ route('admin.videos.create') }}" class="btn btn-primary">
+    <a href="{{ route('admin.videos.presigned.create') }}" class="btn btn-primary">
       ➕ Add New Video
     </a>
   </div>
