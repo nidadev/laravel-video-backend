@@ -294,7 +294,7 @@ public function update(Request $request, $id)
 
         $video->files()->create([
             'variant' => $variants[$index] ?? 'Episode ' . ($index + 1),
-            'duration' => $durations[$index] ?? null,
+    'duration' => strval($durations[$index] ?? ''), // ✅ force string
             'drm' => isset($drms[$index]) ? (bool) $drms[$index] : false,
             'file_url' => Storage::disk('s3')->url($path),
             'manifest_url' => null,
