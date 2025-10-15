@@ -75,5 +75,7 @@ Route::prefix('auth')->group(function () {
     Route::post('verify-otp', [OtpController::class, 'verifyOtp']);
 });
 
+Route::post('/payment/webhook', [PaymentWebhookController::class, 'handleWebhook']);
+
 
 
