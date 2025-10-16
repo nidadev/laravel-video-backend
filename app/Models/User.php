@@ -23,7 +23,8 @@ class User extends Authenticatable implements JWTSubject
         'name',
         'email',
         'password',
-        'phone'
+        'phone',
+        'status'
     ];
 
     /**
@@ -73,4 +74,8 @@ public function hasActiveSubscription()
 {
     return $this->activeSubscription() !== null;
 }
+public function isBanned()
+    {
+        return $this->status === 'banned';
+    }
 }
