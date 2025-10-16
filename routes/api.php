@@ -41,7 +41,7 @@ Route::middleware('auth:sanctum')->get('/profile', function (Request $request) {
 
 });*/
 
-Route::middleware(['auth:sanctum','jwt.auth'])->group(function () {
+Route::middleware(['jwt.auth'])->group(function () {
     
     // User Routes
     //Route::get('/user-profile', [UserController::class, 'profile']);
