@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Models\User;
+use App\Models\Subscription;
+
 
 class AuthController extends Controller
 {
@@ -34,6 +37,11 @@ class AuthController extends Controller
     public function dashboard()
     {
         $videoCount = \App\Models\Video::count();
-        return view('admin.dashboard', compact('videoCount'));
+         $totalUsers = User::count();
+        //dd($totalUsers);
+$bannedUsers = User::where('status', 'banned')->count();
+$activeSubscriptions = Subscription::where('status', 'active')->count();
+        return view('admin.dashboard', compact('videoCount','totalUsers', 'bannedUsers', 'activeSubscriptions'));
+ 
     }
 }

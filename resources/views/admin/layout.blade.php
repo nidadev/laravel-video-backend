@@ -21,7 +21,10 @@
     <h4 class="p-3">Admin Panel</h4>
     <a href="{{ route('admin.dashboard') }}">🏠 Dashboard</a>
     <a href="{{ route('admin.videos') }}">🎬 Videos</a>
-    <a href="{{ route('admin.logout') }}">🚪 Logout</a>
+        <a href="{{ route('admin.users.index') }}"> 👥 Manage User</a>
+            <a href="{{ route('admin.logout') }}">🚪 Logout</a>
+
+
     <!--a href="{{ route('admin.videos.presigned.create') }}">☁️ Presigned Upload</a-->
 
   </div>

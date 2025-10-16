@@ -4,6 +4,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\VideoController;
 use App\Http\Controllers\Admin\VideoUploadController;
+use App\Http\Controllers\Admin\UserController;
+
 
 Route::get('/', function () {
     return view('welcome');
@@ -32,7 +34,15 @@ Route::post('/admin/videos/presigned-url', [VideoController::class, 'generatePre
     ->name('admin.videos.presigned.url');
 
 Route::post('/admin/videos/presigned-store', [VideoController::class, 'storePresigned'])
-    ->name('admin.videos.presigned.store');});
+    ->name('admin.videos.presigned.store');
+
+    Route::get('/users', [UserController::class, 'index'])->name('admin.users.index');
+    Route::post('/users/{id}/ban', [UserController::class, 'ban'])->name('admin.users.ban');
+    Route::post('/users/{id}/unban', [UserController::class, 'unban'])->name('admin.users.unban');
+    Route::post('/users/{id}/upgrade', [UserController::class, 'upgrade'])->name('admin.users.upgrade');
+});
+
+
 
 // ----------- API ROUTES -----------
 
