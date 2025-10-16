@@ -48,7 +48,7 @@ class OtpController extends Controller
     ]);
 
     // ✅ Send via Twilio
-    try {
+    /*try {
         $twilio = new \Twilio\Rest\Client(env('TWILIO_SID'), env('TWILIO_AUTH_TOKEN'));
         $twilio->messages->create($phone, [
             'from' => env('TWILIO_FROM'),
@@ -61,7 +61,7 @@ class OtpController extends Controller
             'response' => 500,
             'success' => false,
         ], 500);
-    }
+    }*/
 
     return response()->json([
         'message' => 'Otp send successfully',

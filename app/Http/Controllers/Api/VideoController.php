@@ -10,21 +10,37 @@ use Illuminate\Support\Facades\Storage;
 class VideoController extends Controller
 {
     //
-  public function index(Request $request)
-    {
-        /*return Video::with(['files','category'])
-            ->where('status', 'ready')
-            ->latest()
-            ->get();*/
-            $query = Video::with('files', 'category')
-        ->where('status', 'ready');
+ public function index(Request $request)
+{
+    try {
+        $query = Video::with(['files', 'category'])
+            ->where('status', 'ready');
 
-    if ($request->category_id) {
-        $query->where('category_id', $request->category_id);
-    }
+        if ($request->category_id) {
+            $query->where('category_id', $request->category_id);
+        }
 
-    return $query->latest()->get();
+        $videos = $query->latest()->get();
+
+        return response()->json([
+            'message' => 'Videos fetch Successfully',
+            'data' => $videos,
+            'response' => 200,
+            'success' => true,
+        ], 200);
+
+    } catch (\Exception $e) {
+        \Log::error('Video index error: ' . $e->getMessage());
+
+        return response()->json([
+            'message' => 'Failed to fetch videos',
+            'data' => [],
+            'response' => 500,
+            'success' => false,
+        ], 500);
     }
+}
+
 
    public function upload(Request $request)
 {
@@ -237,29 +253,117 @@ public function destroy($id)
         ]);
     }
 
-    public function show(Request $request, $id)
+  public function show(Request $request, $id)
 {
-    $video = Video::with('files')->findOrFail($id);
-    $user = $request->user();
+    try {
+        $video = Video::with('files')->findOrFail($id);
+        $user = $request->user();
 
-    $ads_enabled = true;
+        $ads_enabled = true;
 
-    if ($user && $user->hasActiveSubscription()) {
-        $ads_enabled = false;
+        if ($user && method_exists($user, 'hasActiveSubscription') && $user->hasActiveSubscription()) {
+            $ads_enabled = false;
+        }
+
+        $data = [
+            'video_title' => $video->title,
+            'ads_enabled' => $ads_enabled,
+            'episodes' => $video->files->map(function ($file) {
+                return [
+                    'episode_id' => $file->id,
+                    'title' => $file->variant,
+                    'url' => $file->file_url,
+                ];
+            }),
+        ];
+
+        return response()->json([
+            'message' => 'fetch video details Successfully',
+            'data' => $data,
+            'response' => 200,
+            'success' => true,
+        ], 200);
+
+    } catch (\Exception $e) {
+        \Log::error('Video show error: ' . $e->getMessage());
+
+        return response()->json([
+            'message' => 'Failed to fetch video details',
+            'data' => [],
+            'response' => 500,
+            'success' => false,
+        ], 500);
     }
-
-    return response()->json([
-        'video_title' => $video->title, // optional
-        'ads_enabled' => $ads_enabled,
-        'episodes' => $video->files->map(function ($file) {
-            return [
-                'episode_id' => $file->id,
-                'title' => $file->variant, // optional
-                'url' => $file->file_url,
-            ];
-        }),
-    ]);
 }
+
+public function fetchByCategory(Request $request)
+{
+    try {
+        $request->validate([
+            'category_id' => 'required|exists:categories,id',
+            'subcategory' => 'nullable|string',
+        ]);
+
+        $query = Video::with(['category', 'files'])
+            ->where('status', 'ready')
+            ->where('category_id', $request->category_id);
+
+        // If subcategory is provided (stored as string)
+        if ($request->subcategory) {
+            $query->where('subcategory', $request->subcategory);
+        }
+
+        $videos = $query->latest()->get();
+
+        if ($videos->isEmpty()) {
+            return response()->json([
+                'message' => 'No videos found for this category/subcategory',
+                'data' => [],
+                'response' => 404,
+                'success' => false,
+            ], 404);
+        }
+
+        $formatted = $videos->map(function ($video) {
+            return [
+                'id' => $video->id,
+                'title' => $video->title,
+                'description' => $video->description,
+                'thumbnail' => $video->thumbnail_url ?? null,
+                'category' => $video->category ? [
+                    'id' => $video->category->id,
+                    'name' => $video->category->name,
+                ] : null,
+                'subcategory' => $video->subcategory ?? null, // stored as string
+                'files' => $video->files->map(function ($file) {
+                    return [
+                        'id' => $file->id,
+                        'variant' => $file->variant,
+                        'url' => $file->file_url,
+                    ];
+                }),
+            ];
+        });
+
+        return response()->json([
+            'message' => 'Api Call Successfully',
+            'data' => $formatted,
+            'response' => 200,
+            'success' => true,
+        ], 200);
+
+    } catch (\Exception $e) {
+        \Log::error('Error fetching videos by category: ' . $e->getMessage());
+
+        return response()->json([
+            'message' => 'Something went wrong',
+            'data' => [],
+            'response' => 500,
+            'success' => false,
+        ], 500);
+    }
+}
+
 
 
 
