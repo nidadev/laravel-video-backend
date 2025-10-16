@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Log;
 
 class PaymentWebhookController extends Controller
 {
-    public function handleWebhook(Request $request)
+    /*public function handleWebhook(Request $request)
     {
         Stripe::setApiKey(config('services.stripe.secret'));
 
@@ -65,6 +65,44 @@ class PaymentWebhookController extends Controller
         }
 
         return response()->json(['status' => 'success']);
+    }*/
+
+        public function handleWebhook(Request $request)
+{
+    $payload = $request->getContent();
+    $sig_header = $request->server('HTTP_STRIPE_SIGNATURE');
+    $endpoint_secret = env('STRIPE_WEBHOOK_SECRET');
+
+    try {
+        $event = Webhook::constructEvent($payload, $sig_header, $endpoint_secret);
+    } catch (\UnexpectedValueException $e) {
+        return response('Invalid payload', 400);
+    } catch (\Stripe\Exception\SignatureVerificationException $e) {
+        return response('Invalid signature', 400);
     }
+
+    if ($event->type === 'checkout.session.completed') {
+        $session = $event->data->object;
+
+        $user = User::find($session->metadata->user_id ?? null);
+        $plan = Plan::find($session->metadata->plan_id ?? null);
+
+        if ($user && $plan) {
+            // Cancel existing active subs
+            $user->subscriptions()->where('status', 'active')->update(['status' => 'cancelled']);
+
+            // Create new subscription
+            Subscription::create([
+                'user_id' => $user->id,
+                'plan_id' => $plan->id,
+                'start_date' => now(),
+                'end_date' => now()->addDays($plan->duration_days),
+                'status' => 'active',
+            ]);
+        }
+    }
+
+    return response('Webhook received', 200);
+}
 }
 
