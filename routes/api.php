@@ -51,6 +51,8 @@ Route::middleware(['jwt.auth'])->group(function () {
     //Route::post('/videos', [VideoController::class, 'store']);
     Route::get('/videos', [VideoController::class, 'index']);
     Route::get('/videos/{id}', [VideoController::class, 'show']);
+    Route::get('/videos-by-category', [VideoController::class, 'fetchByCategory']);
+
     Route::post('/videos/{id}/like', [VideoController::class, 'like']);
 
     // Subscription
