@@ -5,14 +5,16 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 
 use Illuminate\Http\Request;
+use Stripe\StripeClient;
 use App\Models\Plan;
 use App\Models\Subscription;
+use App\Models\User;
 
 class SubscriptionController extends Controller
 {
     //
     // User purchases a subscription plan
-   public function purchase(Request $request)
+   /*public function purchase(Request $request)
 {
     try {
         $request->validate([
@@ -69,7 +71,66 @@ class SubscriptionController extends Controller
             'success' => false,
         ], 500);
     }
+}*/
+
+
+
+public function purchase(Request $request)
+{
+    try {
+        $request->validate([
+            'plan_id' => 'required|exists:plans,id',
+        ]);
+
+        $user = $request->user();
+        $plan = Plan::findOrFail($request->plan_id);
+
+        $stripe = new StripeClient(env('STRIPE_SECRET'));
+
+        // ✅ Create Stripe Checkout Session
+        $session = $stripe->checkout->sessions->create([
+            'payment_method_types' => ['card'],
+            'customer_email' => $user->email ?? null,
+            'line_items' => [[
+                'price_data' => [
+                    'currency' => 'usd',
+                    'product_data' => [
+                        'name' => $plan->name,
+                    ],
+                    'unit_amount' => $plan->price * 100,
+                ],
+                'quantity' => 1,
+            ]],
+            'mode' => 'payment',
+            'success_url' => env('APP_URL') . '/api/payment/success?session_id={CHECKOUT_SESSION_ID}',
+            'cancel_url' => env('APP_URL') . '/payment/cancel',
+            'metadata' => [
+                'user_id' => $user->id,
+                'plan_id' => $plan->id,
+            ],
+        ]);
+
+        return response()->json([
+            'message' => 'Checkout session created successfully',
+            'data' => [
+                'checkout_url' => $session->url,
+            ],
+            'response' => 200,
+            'success' => true,
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Subscription purchase failed: ' . $e->getMessage());
+
+        return response()->json([
+            'message' => 'Failed to initiate payment',
+            'data' => ['error' => $e->getMessage()],
+            'response' => 500,
+            'success' => false,
+        ]);
+    }
 }
+
 
 
     // Optional: View current user's subscription
