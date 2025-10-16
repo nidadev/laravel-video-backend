@@ -111,7 +111,7 @@
 
         <input type="hidden" name="videos" id="videos-json">
 
-        <h4 class="mt-4">⬆️ Add New Video Files (S3 Presigned Uploads)</h4>
+        <h4 class="mt-4">⬆️ Add New Video Files</h4>
         <div id="presigned-upload-list" class="mb-3"></div>
         <button type="button" class="btn btn-outline-primary" id="add-presigned-upload">+ Upload Video via S3</button>
 
