@@ -11,25 +11,44 @@
         <div class="alert alert-success">{{ session('success') }}</div>
     @endif
 
-    <table class="table table-bordered table-striped">
-        <thead>
+    <table class="table table-bordered table-striped align-middle">
+        <thead class="table-dark">
             <tr>
                 <th>Thumbnail</th>
                 <th>Title</th>
                 <th>Description</th>
-                <th>Video Link</th>
+                <th>Preview</th>
                 <th>Actions</th>
             </tr>
         </thead>
         <tbody>
         @forelse($trendingVideos as $video)
             <tr>
-                <td><img src="{{ $video->thumbnail }}" width="100"></td>
+                <td class="text-center">
+                    @if(!empty($video->thumbnail))
+                        <img src="{{ $video->thumbnail }}" width="100" class="rounded shadow-sm" alt="Thumbnail">
+                    @else
+                        <span class="text-muted">No Thumbnail</span>
+                    @endif
+                </td>
+
                 <td>{{ $video->title }}</td>
-                <td>{{ Str::limit($video->description, 80) }}</td>
-                <td><a href="{{ $video->video_url }}" target="_blank">Watch</a></td>
+
+                <td>{{ \Illuminate\Support\Str::limit($video->description, 80) }}</td>
+
                 <td>
-                    <form action="{{ route('admin.trending.destroy', $video->id) }}" method="POST" onsubmit="return confirm('Delete this video?')">
+                    @if(!empty($video->video_url))
+                        <video width="200" controls class="rounded">
+                            <source src="{{ $video->video_url }}" type="video/mp4">
+                            Your browser does not support video playback.
+                        </video>
+                    @else
+                        <span class="text-muted">No Video</span>
+                    @endif
+                </td>
+
+                <td>
+                    <form action="{{ route('admin.trending.destroy', $video->id) }}" method="POST" onsubmit="return confirm('Delete this video?')" class="d-inline">
                         @csrf
                         @method('DELETE')
                         <button class="btn btn-danger btn-sm">🗑️ Delete</button>
@@ -37,10 +56,11 @@
                 </td>
             </tr>
         @empty
-            <tr><td colspan="5" class="text-center">No trending videos found.</td></tr>
+            <tr>
+                <td colspan="5" class="text-center text-muted">No trending videos found.</td>
+            </tr>
         @endforelse
         </tbody>
     </table>
-
 </div>
 @endsection

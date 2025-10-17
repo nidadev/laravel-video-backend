@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\TrendingVideo;
+use Illuminate\Support\Facades\Storage;
 
 class TrendingVideoController extends Controller
 {
@@ -12,6 +13,19 @@ class TrendingVideoController extends Controller
     public function index()
     {
         $trendingVideos = TrendingVideo::latest()->get();
+         /*$trendingVideos->transform(function ($video) {
+        if ($video->thumbnail) {
+            $path = str_replace(Storage::disk('s3')->url(''), '', $video->thumbnail);
+            $video->thumbnail_temp = Storage::disk('s3')->temporaryUrl($path, now()->addHours(12));
+        }
+
+        if ($video->video_url) {
+            $path = str_replace(Storage::disk('s3')->url(''), '', $video->video_url);
+            $video->video_temp = Storage::disk('s3')->temporaryUrl($path, now()->addHours(12));
+        }
+
+        return $video;
+    });*/
         return view('admin.trending.index', compact('trendingVideos'));
     }
 
