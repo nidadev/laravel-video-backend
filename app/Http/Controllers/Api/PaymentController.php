@@ -37,8 +37,8 @@ class PaymentController extends Controller
             ]],
             'mode' => 'payment',
             'customer_email' => $user->email,
-            'success_url' => url('/api/payment/success?session_id={CHECKOUT_SESSION_ID}'),
-            'cancel_url' => url('/api/payment/cancel'),
+           'success_url' => env('APP_URL') . '/api/payment/success?session_id={CHECKOUT_SESSION_ID}',
+'cancel_url'  => env('APP_URL') . '/payment/cancel',
         ]);
 
         return response()->json([

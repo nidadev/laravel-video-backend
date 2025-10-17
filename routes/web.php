@@ -3,8 +3,9 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\VideoController;
-use App\Http\Controllers\Admin\VideoUploadController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\TrendingVideoController;
+
 
 
 Route::get('/', function () {
@@ -40,6 +41,16 @@ Route::post('/admin/videos/presigned-store', [VideoController::class, 'storePres
     Route::post('/users/{id}/ban', [UserController::class, 'ban'])->name('admin.users.ban');
     Route::post('/users/{id}/unban', [UserController::class, 'unban'])->name('admin.users.unban');
     Route::post('/users/{id}/upgrade', [UserController::class, 'upgrade'])->name('admin.users.upgrade');
+
+ // ----------------- 🔥 Trending Videos -----------------
+    Route::get('/admin/trending', [TrendingVideoController::class, 'index'])->name('admin.trending.index');
+    Route::get('/admin/trending/create', [TrendingVideoController::class, 'create'])->name('admin.trending.create');
+    Route::post('/admin/trending/store', [TrendingVideoController::class, 'store'])->name('admin.trending.store');
+    Route::delete('/admin/trending/{id}', [TrendingVideoController::class, 'destroy'])->name('admin.trending.destroy');
+
+    
+
+
 });
 
 
