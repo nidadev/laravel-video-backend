@@ -22,7 +22,9 @@
     <a href="{{ route('admin.dashboard') }}">🏠 Dashboard</a>
     <a href="{{ route('admin.videos') }}">🎬 Videos</a>
         <a href="{{ route('admin.users.index') }}"> 👥 Manage User</a>
-            <a href="{{ route('admin.logout') }}">🚪 Logout</a>
+    <a href="{{ route('admin.trending.index') }}">🔥 Trending Videos</a>
+                <a href="{{ route('admin.logout') }}">🚪 Logout</a>
+
 
 
     <!--a href="{{ route('admin.videos.presigned.create') }}">☁️ Presigned Upload</a-->

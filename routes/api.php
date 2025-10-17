@@ -9,6 +9,8 @@ use App\Http\Controllers\Api\Auth\OtpController;
 use App\Http\Controllers\Api\SubscriptionController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PaymentWebhookController;
+use App\Http\Controllers\Api\TrendingVideoController;
+
 
 
 Route::get('/user', function (Request $request) {
@@ -63,6 +65,8 @@ Route::middleware(['jwt.auth'])->group(function () {
 
      Route::post('/payment/checkout', [PaymentController::class, 'createCheckoutSession']);
     Route::get('/payment/success', [PaymentController::class, 'paymentSuccess']);
+
+     Route::get('/trendingvideos', [TrendingVideoController::class, 'index']);
 });
 
 Route::middleware(['auth:sanctum', 'is_admin1'])->group(function () {
