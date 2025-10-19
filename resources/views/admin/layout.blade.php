@@ -23,6 +23,9 @@
     <a href="{{ route('admin.videos') }}">🎬 Videos</a>
         <a href="{{ route('admin.users.index') }}"> 👥 Manage User</a>
     <a href="{{ route('admin.trending.index') }}">🔥 Trending Videos</a>
+     <a href="{{ route('admin.videos.mostWatched') }}">
+        📈 Most Watched
+    </a>
                 <a href="{{ route('admin.logout') }}">🚪 Logout</a>
 
 

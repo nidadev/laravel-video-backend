@@ -348,6 +348,14 @@ public function storePresigned(Request $request)
     }
 }
 
+public function mostWatched()
+{
+    $videos = Video::withCount('views')
+        ->orderByDesc('views_count')
+        ->take(20)
+        ->get();
 
+    return view('admin.videos.most_watched', compact('videos'));
+}
 
 }
