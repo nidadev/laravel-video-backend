@@ -85,6 +85,7 @@ Route::prefix('auth')->group(function () {
 });
 
 Route::post('/payment/webhook', [PaymentWebhookController::class, 'handleWebhook']);
+Route::get('/payment/success', [SubscriptionController::class, 'paymentSuccess']);
 
 
 

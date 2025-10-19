@@ -131,6 +131,78 @@ public function purchase(Request $request)
     }
 }
 
+public function paymentSuccess(Request $request)
+{
+    try {
+        $stripe = new \Stripe\StripeClient(env('STRIPE_SECRET'));
+
+        $sessionId = $request->get('session_id');
+        $session = $stripe->checkout->sessions->retrieve($sessionId);
+
+        if (!$session || $session->payment_status !== 'paid') {
+            return response()->json([
+                'message' => 'Payment not verified or incomplete.',
+                'success' => false,
+            ], 400);
+        }
+
+        $userId = $session->metadata->user_id ?? null;
+        $planId = $session->metadata->plan_id ?? null;
+
+        if (!$userId || !$planId) {
+            return response()->json([
+                'message' => 'Invalid metadata',
+                'success' => false,
+            ], 400);
+        }
+
+        $user = User::findOrFail($userId);
+        $plan = Plan::findOrFail($planId);
+
+        // Determine subscription duration
+        $startDate = now();
+        switch (strtolower($plan->type)) {
+            case 'weekly':
+                $endDate = $startDate->copy()->addWeek();
+                break;
+            case 'monthly':
+                $endDate = $startDate->copy()->addMonth();
+                break;
+            case 'yearly':
+                $endDate = $startDate->copy()->addYear();
+                break;
+            default:
+                $endDate = $startDate->copy()->addDays(7); // default for free or trial plan
+        }
+
+        // Store subscription
+        Subscription::create([
+            'user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'status' => 'active',
+        ]);
+
+        return response()->json([
+            'message' => 'Subscription created successfully.',
+            'data' => [
+                'plan' => $plan->name,
+                'start_date' => $startDate->toDateTimeString(),
+                'end_date' => $endDate->toDateTimeString(),
+            ],
+            'success' => true,
+        ]);
+    } catch (\Exception $e) {
+        \Log::error('Payment success handler failed: ' . $e->getMessage());
+
+        return response()->json([
+            'message' => 'Failed to handle successful payment.',
+            'data' => ['error' => $e->getMessage()],
+            'success' => false,
+        ]);
+    }
+}
 
 
     // Optional: View current user's subscription
