@@ -372,16 +372,25 @@ public function recordView(Request $request, $videoId)
     if (!$user) {
         return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
     }
+
     try {
-        $video = Video::findOrFail($videoId);
+        // ✅ Fetch video with its files
+        $video = Video::with('files')->findOrFail($videoId);
 
-        // Record the view
-        VideoView::create([
-            'video_id' => $video->id,
-            'user_id' => $request->user()->id ?? null, // Optional for guests
-        ]);
+        // ✅ Record unique view (optional duplicate prevention within 10 min)
+        $alreadyViewed = VideoView::where('video_id', $video->id)
+            ->where('user_id', $user->id)
+            ->where('created_at', '>=', now()->subMinutes(10))
+            ->exists();
 
-        // Get the latest total views for this video
+        if (!$alreadyViewed) {
+            VideoView::create([
+                'video_id' => $video->id,
+                'user_id' => $user->id,
+            ]);
+        }
+
+        // ✅ Get updated total views
         $totalViews = VideoView::where('video_id', $video->id)->count();
 
         return response()->json([
@@ -399,6 +408,7 @@ public function recordView(Request $request, $videoId)
         ], 500);
     }
 }
+
 
 
 
