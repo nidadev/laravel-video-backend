@@ -12,11 +12,35 @@ use Aws\S3\S3Client;
 class VideoController extends Controller
 {
     //
-     public function index()
-    {
-        $videos = Video::with('category')->get();
-        return view('admin.videos.index', compact('videos'));
-    }
+    public function index()
+{
+    // Fetch videos with categories
+    $videos = Video::with('category')->get();
+
+    // ✅ Convert S3 URLs to temporary signed URLs
+    /*$videos->transform(function ($video) {
+        // Thumbnail temporary URL
+        if ($video->thumbnail) {
+            $video->thumbnail = Storage::disk('s3')->temporaryUrl(
+                str_replace(Storage::disk('s3')->url(''), '', $video->thumbnail),
+                now()->addHours(2)
+            );
+        }
+
+        // Video temporary URL
+        if ($video->video_url) {
+            $video->video_url = Storage::disk('s3')->temporaryUrl(
+                str_replace(Storage::disk('s3')->url(''), '', $video->video_url),
+                now()->addHours(2)
+            );
+        }
+
+        return $video;
+    });*/
+
+    return view('admin.videos.index', compact('videos'));
+}
+
 
     public function create()
     {
@@ -26,79 +50,7 @@ class VideoController extends Controller
         return view('admin.videos.create', compact('categories', 'video'));
     }
 
-  /*public function store(Request $request)
-{
-    $request->validate([
-        'title' => 'required|string|max:255',
-        'description' => 'nullable|string',
-        'category_id' => 'required|exists:categories,id',
 
-        'thumbnail' => 'nullable|image|max:2048',
-
-        'video_files' => 'required|array|min:1',
-        'video_files.*' => 'file|mimetypes:video/mp4,video/mpeg,video/quicktime|max:204800',
-
-        'variants' => 'nullable|array',
-        'variants.*' => 'nullable|string|max:255',
-
-        'drms' => 'nullable|array',
-        'drms.*' => 'nullable|in:0,1',
-    ]);
-
-    // Upload thumbnail to S3 if exists
-    $thumbnailPath = null;
-    if ($request->hasFile('thumbnail')) {
-        $thumbnailPath = $request->file('thumbnail')->store('thumbnails', 's3');
-        Storage::disk('s3')->setVisibility($thumbnailPath, 'public');
-    }
-
-    // Create video
-    $video = Video::create([
-        'title' => $request->title,
-        'description' => $request->description,
-        'category_id' => $request->category_id,
-        'thumbnail' => $thumbnailPath ? Storage::disk('s3')->url($thumbnailPath) : null,
-        'status' => 'ready',
-        'created_by' => auth()->id() ?? auth('admin')->id(), // fallback if using custom guard
-    ]);
-
-    // Upload video files (episodes / variants)
-    $files = $request->file('video_files');
-    foreach ($files as $file) {
-    dd($file); // You should see file info here
-}
-    $variants = $request->input('variants', []);
-    $drms = $request->input('drms', []);
-
-    foreach ($files as $index => $file) {
-        if (!$file->isValid()) {
-            continue; // skip invalid uploads
-        }
-
-        $path = $file->store('videos', 's3');
-        Storage::disk('s3')->setVisibility($path, 'public');
-        //dd($path);
-
-        $variant = $variants[$index] ?? 'episode_' . ($index + 1);
-        $drm = isset($drms[$index]) ? (bool) $drms[$index] : false;
-
-        
-
-        $video->files()->create([
-            'variant' => $variant,
-            'file_url' => Storage::disk('s3')->url($path),
-            'manifest_url' => null,
-            'drm' => $drm,
-            'meta' => json_encode([
-                'original_name' => $file->getClientOriginalName(),
-                'size' => $file->getSize(),
-                'mime' => $file->getMimeType(),
-            ]),
-        ]);
-    }
-
-    return redirect()->route('admin.videos')->with('success', 'Video and episodes uploaded successfully.');
-}*/
 
 public function store(Request $request)
 {
@@ -205,122 +157,11 @@ public function edit($id)
 {
     $video = Video::with('files')->findOrFail($id);
     $categories = Category::all();
+
     return view('admin.videos.edit', compact('video', 'categories'));
 }
 
-/*public function update(Request $request, $id)
-{
-    $video = Video::with('files')->findOrFail($id);
 
-    $request->validate([
-        'title' => 'required|string|max:255',
-        'description' => 'required|string',
-        'category_id' => 'filled|exists:categories,id',
-        'subcategory' => 'nullable|string|max:100',
-        'status' => 'required|in:processing,ready,published,disabled',
-        'thumbnail' => 'nullable|image|max:2048',
-
-        'existing_files' => 'nullable|array',
-        'existing_files.*.variant' => 'nullable|string|max:255',
-        'existing_files.*.duration' => 'nullable|string|max:20',
-        'existing_files.*.drm' => 'nullable|in:0,1',
-        'existing_files.*.file' => 'nullable|file|mimetypes:video/mp4,video/mpeg,video/quicktime|max:204800',
-
-        'delete_files' => 'nullable|array',
-
-        'video_files' => 'nullable|array',
-        'video_files.*' => 'file|mimetypes:video/mp4,video/mpeg,video/quicktime|max:204800',
-        'variants' => 'nullable|array',
-        'durations' => 'nullable|array',
-        'drms' => 'nullable|array',
-    ]);
-
-    // 🔹 Thumbnail Upload
-    if ($request->hasFile('thumbnail')) {
-        $path = $request->file('thumbnail')->store('thumbnails', 's3');
-        Storage::disk('s3')->setVisibility($path, 'public');
-        $video->thumbnail = Storage::disk('s3')->url($path);
-    }
-
-    // 🔹 Delete Files
-    if ($request->filled('delete_files')) {
-        foreach ($request->delete_files as $fileId) {
-            $file = $video->files()->find($fileId);
-            if ($file) {
-                $file->delete();
-            }
-        }
-    }
-
-    // 🔹 Update Existing Files
-    if ($request->filled('existing_files')) {
-        foreach ($request->existing_files as $fileId => $fileData) {
-            $existing = $video->files()->find($fileId);
-            if (!$existing) continue;
-
-            $updateData = [
-                'variant' => $fileData['variant'] ?? $existing->variant,
-                'duration' => $fileData['duration'] ?? $existing->duration,
-                'drm' => isset($fileData['drm']) ? (bool) $fileData['drm'] : $existing->drm,
-            ];
-
-            if (isset($fileData['file']) && $fileData['file'] instanceof \Illuminate\Http\UploadedFile) {
-                $file = $fileData['file'];
-                $path = $file->store('videos', 's3');
-                Storage::disk('s3')->setVisibility($path, 'public');
-
-                $updateData['file_url'] = Storage::disk('s3')->url($path);
-                $updateData['meta'] = json_encode([
-                    'original_name' => $file->getClientOriginalName(),
-                    'size' => $file->getSize(),
-                    'mime' => $file->getMimeType(),
-                ]);
-            }
-
-            $existing->update($updateData);
-        }
-    }
-
-    // 🔹 Add New Files
-    $newFiles = $request->file('video_files', []);
-    $variants = $request->input('variants', []);
-    $durations = $request->input('durations', []);
-    $drms = $request->input('drms', []);
-
-    foreach ($newFiles as $index => $file) {
-        if (!$file->isValid()) continue;
-
-        $path = $file->store('videos', 's3');
-        Storage::disk('s3')->setVisibility($path, 'public');
-
-        $video->files()->create([
-            'variant' => $variants[$index] ?? 'Episode ' . ($index + 1),
-    'duration' => strval($durations[$index] ?? ''), // ✅ force string
-            'drm' => isset($drms[$index]) ? (bool) $drms[$index] : false,
-            'file_url' => Storage::disk('s3')->url($path),
-            'manifest_url' => null,
-            'meta' => json_encode([
-                'original_name' => $file->getClientOriginalName(),
-                'size' => $file->getSize(),
-                'mime' => $file->getMimeType(),
-            ]),
-        ]);
-    }
-
-    // 🔹 Update Video Info (with subcategory)
-    $video->update([
-        'title' => $request->title,
-        'description' => $request->description,
-        'category_id' => $request->category_id,
-        'subcategory' => $request->subcategory,  // ✅ added
-        'status' => $request->status,
-        'thumbnail' => $video->thumbnail, // in case updated above
-    ]);
-
-    return redirect()
-        ->route('admin.videos.edit', $video->id)
-        ->with('success', 'Video updated successfully!');
-}*/
 
 public function update(Request $request, $id)
 {
