@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Video;
 use Illuminate\Support\Facades\Storage;
+use App\Models\VideoView;
 
 class VideoController extends Controller
 {
@@ -363,6 +364,42 @@ public function fetchByCategory(Request $request)
         ], 500);
     }
 }
+
+public function recordView(Request $request, $videoId)
+{
+    $user = $request->user();
+
+    if (!$user) {
+        return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+    }
+    try {
+        $video = Video::findOrFail($videoId);
+
+        // Record the view
+        VideoView::create([
+            'video_id' => $video->id,
+            'user_id' => $request->user()->id ?? null, // Optional for guests
+        ]);
+
+        // Get the latest total views for this video
+        $totalViews = VideoView::where('video_id', $video->id)->count();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'View recorded successfully',
+            'video_id' => $video->id,
+            'total_views' => $totalViews,
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('View record failed: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to record view',
+        ], 500);
+    }
+}
+
 
 
 

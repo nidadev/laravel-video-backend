@@ -60,6 +60,8 @@ Route::middleware(['jwt.auth'])->group(function () {
     // Subscription
     Route::post('/subscribe', [SubscriptionController::class, 'purchase']);
     Route::get('/subscription', [SubscriptionController::class, 'current']);
+         Route::post('/videos/{id}/view', [VideoController::class, 'recordView']);
+
 
     //payment
 
@@ -77,6 +79,7 @@ Route::middleware(['auth:sanctum', 'is_admin1'])->group(function () {
     Route::post('admin/videos/{id}/status', [VideoController::class, 'changeStatus']);  
 
      Route::apiResource('admin/categories', CategoryController::class);
+
 });
 
 Route::prefix('auth')->group(function () {
@@ -85,6 +88,7 @@ Route::prefix('auth')->group(function () {
 });
 
 Route::post('/payment/webhook', [PaymentWebhookController::class, 'handleWebhook']);
+
 
 
 

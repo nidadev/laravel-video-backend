@@ -48,7 +48,9 @@ Route::post('/admin/videos/presigned-store', [VideoController::class, 'storePres
     Route::post('/admin/trending/store', [TrendingVideoController::class, 'store'])->name('admin.trending.store');
     Route::delete('/admin/trending/{id}', [TrendingVideoController::class, 'destroy'])->name('admin.trending.destroy');
 
-    
+    Route::get('/admin/videos/most-watched', [VideoController::class, 'mostWatched'])
+    ->name('admin.videos.mostWatched');
+
 
 
 });
