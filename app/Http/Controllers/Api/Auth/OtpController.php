@@ -11,19 +11,30 @@ use Illuminate\Support\Str;
 use Twilio\Rest\Client;
 use Carbon\Carbon;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use Illuminate\Validation\ValidationException;
+
 
 class OtpController extends Controller
 {
     //
-   public function sendOtp(Request $request)
+  public function sendOtp(Request $request)
 {
-    $request->validate([
-        'phone' => 'required|string|min:10|max:15',
-    ]);
+    try {
+        $request->validate([
+            'phone' => 'required|string|min:10|max:15',
+        ]);
+    } catch (ValidationException $e) {
+        return response()->json([
+            'message' => $e->validator->errors()->first(), // first error message
+            'data' => [],
+            'response' => 422,
+            'success' => false,
+        ], 422);
+    }
 
     $phone = $request->phone;
 
-    // 📛 Rate limit check: last 2 mins
+    // 📛 Rate limit check
     $recent = Otp::where('phone', $phone)
         ->where('created_at', '>=', now()->subMinutes(2))
         ->count();
@@ -37,36 +48,19 @@ class OtpController extends Controller
         ], 429);
     }
 
-    // ✅ Generate 6-digit OTP
+    // ✅ Generate OTP
     $otp = rand(100000, 999999);
 
-    // Save in DB with 5 min expiry
     Otp::create([
         'phone' => $phone,
         'otp_code' => $otp,
         'expires_at' => now()->addMinutes(15),
     ]);
 
-    // ✅ Send via Twilio
-    /*try {
-        $twilio = new \Twilio\Rest\Client(env('TWILIO_SID'), env('TWILIO_AUTH_TOKEN'));
-        $twilio->messages->create($phone, [
-            'from' => env('TWILIO_FROM'),
-            'body' => "Your OTP is: {$otp}"
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'message' => 'Failed to send OTP',
-            'data' => ['error' => $e->getMessage()],
-            'response' => 500,
-            'success' => false,
-        ], 500);
-    }*/
-
     return response()->json([
         'message' => 'Otp send successfully',
         'data' => [
-            'otp' => $otp, // 🔹 optional — remove in production if sensitive
+            'otp' => $otp,
             'phone' => $phone
         ],
         'response' => 200,
