@@ -49,7 +49,7 @@ class OtpController extends Controller
     }
 
     // ✅ Generate OTP
-    $otp = rand(100000, 999999);
+    $otp = rand(1000, 9999);
 
     Otp::create([
         'phone' => $phone,
