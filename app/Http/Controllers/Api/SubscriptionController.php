@@ -243,4 +243,37 @@ public function paymentSuccess(Request $request)
     }
 }
 
+public function getPlanDetails()
+{
+    try {
+        $plans = Plan::select('id', 'name', 'price', 'duration_days', 'ads_enabled')->get();
+
+        if ($plans->isEmpty()) {
+            return response()->json([
+                'message' => 'No plans available',
+                'data' => [],
+                'response' => 404,
+                'success' => false,
+            ], 404);
+        }
+
+        return response()->json([
+            'message' => 'Plans retrieved successfully',
+            'data' => $plans,
+            'response' => 200,
+            'success' => true,
+        ], 200);
+
+    } catch (\Exception $e) {
+        \Log::error('Failed to fetch plan details: ' . $e->getMessage());
+
+        return response()->json([
+            'message' => 'Failed to fetch plan details',
+            'data' => ['error' => $e->getMessage()],
+            'response' => 500,
+            'success' => false,
+        ], 500);
+    }
+}
+
 }

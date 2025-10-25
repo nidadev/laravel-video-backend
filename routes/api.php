@@ -61,6 +61,8 @@ Route::middleware(['jwt.auth'])->group(function () {
     Route::post('/subscribe', [SubscriptionController::class, 'purchase']);
     Route::get('/subscription', [SubscriptionController::class, 'current']);
          Route::post('/videos/{id}/view', [VideoController::class, 'recordView']);
+         Route::get('/plans', [SubscriptionController::class, 'getPlanDetails']);
+
 
 
     //payment
