@@ -14,68 +14,8 @@ class SubscriptionController extends Controller
 {
     //
     // User purchases a subscription plan
-   /*public function purchase(Request $request)
-{
-    try {
-        $request->validate([
-            'plan_id' => 'required|exists:plans,id',
-        ]);
-
-        $user = $request->user();
-        $plan = Plan::findOrFail($request->plan_id);
-
-        // ✅ Cancel existing active subscriptions (optional)
-        $user->subscriptions()->where('status', 'active')->update(['status' => 'cancelled']);
-
-        // ✅ Create new subscription
-        $subscription = Subscription::create([
-            'user_id' => $user->id,
-            'plan_id' => $plan->id,
-            'start_date' => now(),
-            'end_date' => now()->addDays($plan->duration_days),
-            'status' => 'active',
-        ]);
-
-        $data = [
-            'subscription' => $subscription,
-            'plan' => [
-                'id' => $plan->id,
-                'name' => $plan->name,
-                'price' => $plan->price,
-                'duration_days' => $plan->duration_days,
-            ],
-        ];
-
-        return response()->json([
-            'message' => 'Subscription purchase Successfully',
-            'data' => $data,
-            'response' => 200,
-            'success' => true,
-        ], 200);
-
-    } catch (\Illuminate\Validation\ValidationException $e) {
-        return response()->json([
-            'message' => 'Validation failed',
-            'data' => $e->errors(),
-            'response' => 422,
-            'success' => false,
-        ], 422);
-
-    } catch (\Exception $e) {
-        \Log::error('Subscription purchase failed: ' . $e->getMessage());
-
-        return response()->json([
-            'message' => 'Failed to purchase subscription',
-            'data' => [],
-            'response' => 500,
-            'success' => false,
-        ], 500);
-    }
-}*/
-
-
-
-public function purchase(Request $request)
+   
+/*public function purchase(Request $request)
 {
     try {
         $request->validate([
@@ -129,7 +69,53 @@ public function purchase(Request $request)
             'success' => false,
         ]);
     }
+}*/
+
+public function purchase(Request $request)
+{
+    $request->validate([
+        'plan_id' => 'required|exists:plans,id',
+    ]);
+
+    $user = $request->user();
+    $plan = Plan::findOrFail($request->plan_id);
+
+    try {
+        $stripe = new StripeClient(env('STRIPE_SECRET'));
+
+        // ✅ Create PaymentIntent instead of Checkout Session
+        $paymentIntent = $stripe->paymentIntents->create([
+            'amount' => $plan->price * 100, // Stripe uses cents
+            'currency' => 'usd',
+            'payment_method_types' => ['card'],
+            'metadata' => [
+                'user_id' => $user->id,
+                'plan_id' => $plan->id,
+            ],
+        ]);
+
+        return response()->json([
+            'message' => 'PaymentIntent created successfully',
+            'data' => [
+                'client_secret' => $paymentIntent->client_secret,
+                'payment_intent_id' => $paymentIntent->id,
+            ],
+            'response' => 200,
+            'success' => true,
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Purchase failed: ' . $e->getMessage());
+
+        return response()->json([
+            'message' => 'Failed to create PaymentIntent',
+            'data' => ['error' => $e->getMessage()],
+            'response' => 500,
+            'success' => false,
+        ]);
+    }
 }
+
 
 public function paymentSuccess(Request $request)
 {
