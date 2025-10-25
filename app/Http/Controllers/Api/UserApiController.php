@@ -135,4 +135,22 @@ class UserApiController extends Controller
         ], 200);
     }
 
+    // app/Http/Controllers/Api/UserApiController.php
+public function saveDeviceToken(Request $request)
+{
+    $request->validate([
+        'device_token' => 'required|string',
+    ]);
+
+    $user = $request->user();
+    $user->update(['device_token' => $request->device_token]);
+
+    return response()->json([
+        'message' => 'Device token saved successfully',
+        'response' => 200,
+        'success' => true,
+    ]);
+}
+
+
 }
