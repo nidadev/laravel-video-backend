@@ -46,6 +46,16 @@
       </div>
     </div>
 
+    <!-- Revenue -->
+    <div class="col-md-3">
+      <div class="card shadow-sm text-center border-0">
+        <div class="card-body">
+          <h6 class="text-muted">💳 Revenue </h6>
+          <h2 class="fw-bold text-info">$4234</h2>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 @endsection
