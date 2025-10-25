@@ -30,18 +30,7 @@ Route::middleware('auth:sanctum')->get('/profile', function (Request $request) {
     return $request->user();
 });
 
-/*Route::middleware(['auth:sanctum','check.token.expiry'])->group(function () {
- // Route::post('/videos/upload', [VideoController::class, 'upload']);
-    Route::post('/videos', [VideoController::class, 'store']);
-    Route::get('/videos', [VideoController::class, 'index']);
-    Route::get('/video/{id}', [VideoController::class, 'show']);
-    Route::post('/videos/{id}/like', [VideoController::class, 'like']);
-    Route::post('/logout', [AuthController::class, 'logout']);
-      Route::post('/subscribe', [SubscriptionController::class, 'purchase']);
-    Route::get('/subscription', [SubscriptionController::class, 'current']);
-    
 
-});*/
 
 Route::middleware(['jwt.auth'])->group(function () {
     
@@ -71,6 +60,7 @@ Route::middleware(['jwt.auth'])->group(function () {
     Route::get('/payment/success', [PaymentController::class, 'paymentSuccess']);
 
      Route::get('/trendingvideos', [TrendingVideoController::class, 'index']);
+     Route::get('/categories', [CategoryController::class, 'index']);
 });
 
 Route::middleware(['auth:sanctum', 'is_admin1'])->group(function () {
