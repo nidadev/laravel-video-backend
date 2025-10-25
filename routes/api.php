@@ -57,6 +57,8 @@ Route::get('/users/{id}', [UserApiController::class, 'show']);
 Route::post('/users', [UserApiController::class, 'store']);
 Route::delete('/users/{id}', [UserApiController::class, 'destroy']);
  Route::post('/users/update-profile', [UserApiController::class, 'updateProfile']);
+
+ Route::post('/user/device-token', [UserApiController::class, 'saveDeviceToken']);
 });
 
 Route::middleware(['auth:sanctum', 'is_admin1'])->group(function () {

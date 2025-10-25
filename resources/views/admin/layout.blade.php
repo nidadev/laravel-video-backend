@@ -26,6 +26,9 @@
      <a href="{{ route('admin.videos.mostWatched') }}">
         📈 Most Watched
     </a>
+    <a href="{{ route('admin.notifications.index') }}">
+    🔔 Notifications
+</a>
                 <a href="{{ route('admin.logout') }}">🚪 Logout</a>
 
 

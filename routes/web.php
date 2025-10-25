@@ -5,6 +5,8 @@ use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\VideoController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\TrendingVideoController;
+use App\Http\Controllers\Admin\NotificationController;
+
 
 
 
@@ -51,6 +53,8 @@ Route::post('/admin/videos/presigned-store', [VideoController::class, 'storePres
     Route::get('/admin/videos/most-watched', [VideoController::class, 'mostWatched'])
     ->name('admin.videos.mostWatched');
 
+  Route::get('/notifications', [NotificationController::class, 'index'])->name('admin.notifications.index');
+    Route::post('/notifications/send', [NotificationController::class, 'send'])->name('admin.notifications.send');
 
 
 });
