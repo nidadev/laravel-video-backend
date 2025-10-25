@@ -105,4 +105,34 @@ class UserApiController extends Controller
             'success' => true,
         ], 200);
     }
+
+     public function updateProfile(Request $request)
+    {
+        $user = $request->user(); // Logged-in user via JWT
+
+        $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'email' => 'sometimes|email|max:255|unique:users,email,' . $user->id,
+           // 'phone' => 'sometimes|string|max:20',
+           // 'password' => 'sometimes|string|min:6|confirmed', // requires password_confirmation field
+        ]);
+
+        if ($request->filled('password')) {
+            $user->password = Hash::make($request->password);
+        }
+
+        if ($request->filled('name')) $user->name = $request->name;
+        if ($request->filled('email')) $user->email = $request->email;
+        if ($request->filled('phone')) $user->phone = $request->phone;
+
+        $user->save();
+
+        return response()->json([
+            'message' => 'Profile updated successfully',
+            'data' => $user,
+            'response' => 200,
+            'success' => true,
+        ], 200);
+    }
+
 }

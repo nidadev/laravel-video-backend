@@ -56,6 +56,7 @@ Route::middleware(['jwt.auth'])->group(function () {
 Route::get('/users/{id}', [UserApiController::class, 'show']);
 Route::post('/users', [UserApiController::class, 'store']);
 Route::delete('/users/{id}', [UserApiController::class, 'destroy']);
+ Route::post('/users/update-profile', [UserApiController::class, 'updateProfile']);
 });
 
 Route::middleware(['auth:sanctum', 'is_admin1'])->group(function () {
