@@ -10,13 +10,8 @@ use App\Http\Controllers\Api\SubscriptionController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PaymentWebhookController;
 use App\Http\Controllers\Api\TrendingVideoController;
+use App\Http\Controllers\Api\UserApiController;
 
-
-
-Route::get('/user', function (Request $request) {
-    return $request->user();
-});
-//->middleware('auth:sanctum');
 
 
 Route::post('/register',[AuthController::class,'register']);
@@ -25,11 +20,6 @@ Route::post('/login',[AuthController::class,'login']);
 Route::get('/admin/login', function () {
     return view('admin.login');
 });
-
-Route::middleware('auth:sanctum')->get('/profile', function (Request $request) {
-    return $request->user();
-});
-
 
 
 Route::middleware(['jwt.auth'])->group(function () {
@@ -61,6 +51,11 @@ Route::middleware(['jwt.auth'])->group(function () {
 
      Route::get('/trendingvideos', [TrendingVideoController::class, 'index']);
      Route::get('/categories', [CategoryController::class, 'index']);
+
+     Route::get('/users', [UserApiController::class, 'index']);
+Route::get('/users/{id}', [UserApiController::class, 'show']);
+Route::post('/users', [UserApiController::class, 'store']);
+Route::delete('/users/{id}', [UserApiController::class, 'destroy']);
 });
 
 Route::middleware(['auth:sanctum', 'is_admin1'])->group(function () {
