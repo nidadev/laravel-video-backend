@@ -78,6 +78,10 @@
           @endforelse
         </tbody>
       </table>
+      <!-- Pagination -->
+<div class="mt-3 d-flex justify-content-center">
+  {{ $videos->links('pagination::bootstrap-5') }}
+</div>
     </div>
   </div>
 </div>

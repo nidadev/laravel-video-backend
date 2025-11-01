@@ -15,7 +15,7 @@ class VideoController extends Controller
     public function index()
 {
     // Fetch videos with categories
-    $videos = Video::with('category')->get();
+    $videos = Video::with('category')->latest()->paginate(20);;
 
     // ✅ Convert S3 URLs to temporary signed URLs
     /*$videos->transform(function ($video) {
