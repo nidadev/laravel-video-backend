@@ -11,6 +11,8 @@ use App\Models\Subscription;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use App\Helpers\FirebaseHelper;
+use App\Models\Notification;
 
 class PaymentWebhookController extends Controller
 {
@@ -55,6 +57,23 @@ public function handleWebhook(Request $request)
                 'end_date' => now()->addDays($plan->duration_days),
                 'status' => 'active',
             ]);
+
+            // ✅ Create database notification
+    Notification::create([
+        'user_id' => $user->id,
+        'title' => 'Payment Successful 🎉',
+        'message' => 'Your plan "' . $plan->name . '" has been activated.',
+    ]);
+
+    // ✅ Send push notification if device token exists
+    if (!empty($user->device_token)) {
+        FirebaseHelper::sendPushNotification(
+            $user->device_token,
+            'Payment Successful 🎉',
+            'Your plan "' . $plan->name . '" is now active.'
+        );
+    }
+
 
             \Log::info('✅ Subscription created successfully', [
                 'user_id' => $user->id,

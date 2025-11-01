@@ -46,8 +46,8 @@ Route::middleware(['jwt.auth'])->group(function () {
 
     //payment
 
-     Route::post('/payment/checkout', [PaymentController::class, 'createCheckoutSession']);
-    Route::get('/payment/success', [PaymentController::class, 'paymentSuccess']);
+    // Route::post('/payment/checkout', [PaymentController::class, 'createCheckoutSession']);
+    //Route::get('/payment/success', [PaymentController::class, 'paymentSuccess']);
 
      Route::get('/trendingvideos', [TrendingVideoController::class, 'index']);
      Route::get('/categories', [CategoryController::class, 'index']);
