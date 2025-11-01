@@ -12,7 +12,7 @@ use Carbon\Carbon;
 
 class PaymentController extends Controller
 {
-    public function createCheckoutSession(Request $request)
+    /*public function createCheckoutSession(Request $request)
     {
         $request->validate([
             'plan_id' => 'required|exists:plans,id',
@@ -44,9 +44,9 @@ class PaymentController extends Controller
         return response()->json([
             'checkout_url' => $session->url,
         ]);
-    }
+    }*/
 
-    public function paymentSuccess(Request $request)
+    /*public function paymentSuccess(Request $request)
 {
     try {
         $sessionId = $request->query('session_id');
@@ -129,5 +129,5 @@ class PaymentController extends Controller
             'success' => false,
         ], 500);
     }
-}
+}*/
 }

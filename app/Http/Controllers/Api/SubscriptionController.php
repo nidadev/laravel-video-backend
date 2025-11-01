@@ -188,6 +188,22 @@ public function paymentSuccess(Request $request)
             'success' => false,
         ]);
     }
+
+    // 🔔 Create database notification
+Notification::create([
+    'user_id' => $user->id,
+    'title' => 'Payment Successful 🎉',
+    'message' => 'Your plan "' . $plan->name . '" has been activated.',
+]);
+
+// 🔔 Optionally send push notification (if user has a device token)
+if (!empty($user->device_token)) {
+    $this->sendPushNotification(
+        $user->device_token,
+        'Payment Successful 🎉',
+        'Your plan "' . $plan->name . '" is now active.'
+    );
+}
 }
 
 
