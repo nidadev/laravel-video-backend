@@ -21,11 +21,18 @@ class VideoController extends Controller
             $query->where('category_id', $request->category_id);
         }
 
-        $videos = $query->latest()->get();
+        // ✅ Use pagination instead of get()
+        $videos = $query->latest()->paginate(30);
 
         return response()->json([
-            'message' => 'Videos fetch Successfully',
-            'data' => $videos,
+            'message' => 'Videos fetched successfully',
+            'data' => [
+                'videos' => $videos->items(),
+                'current_page' => $videos->currentPage(),
+                'per_page' => $videos->perPage(),
+                'total' => $videos->total(),
+                'last_page' => $videos->lastPage(),
+            ],
             'response' => 200,
             'success' => true,
         ], 200);
@@ -41,6 +48,7 @@ class VideoController extends Controller
         ], 500);
     }
 }
+
 
 
    public function upload(Request $request)
