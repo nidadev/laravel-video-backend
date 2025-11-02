@@ -176,6 +176,7 @@ public function update(Request $request, $id)
         'thumbnail' => 'nullable|string', // presigned S3 URL
         'videos' => 'nullable|json',
         'delete_files' => 'nullable|array',
+        'existing_files' => 'nullable|array',
     ]);
 
     try {
@@ -194,13 +195,14 @@ public function update(Request $request, $id)
             $video->files()->whereIn('id', $request->delete_files)->delete();
         }
 
-        // ✅ Update existing file data (variants/duration/drm)
+        // ✅ Update existing files (now includes season)
         if ($request->has('existing_files')) {
             foreach ($request->existing_files as $fileData) {
                 if (isset($fileData['id'])) {
                     $file = $video->files()->find($fileData['id']);
                     if ($file) {
                         $file->update([
+                            'season' => $fileData['season'] ?? $file->season,
                             'variant' => $fileData['variant'] ?? $file->variant,
                             'duration' => $fileData['duration'] ?? $file->duration,
                             'drm' => $fileData['drm'] ?? $file->drm,
@@ -215,6 +217,7 @@ public function update(Request $request, $id)
             $newVideos = json_decode($request->videos, true);
             foreach ($newVideos as $file) {
                 $video->files()->create([
+                    'season' => $file['season'] ?? null,
                     'variant' => $file['variant'] ?? 'Default',
                     'file_url' => $file['file_url'],
                     'manifest_url' => null,

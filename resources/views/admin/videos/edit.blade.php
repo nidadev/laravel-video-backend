@@ -86,6 +86,10 @@
                 <source src="{{ $file->file_url }}" type="video/mp4">
               </video>
               <div class="row g-2">
+                 <div class="col-md-3">
+                  <label>Season</label>
+                  <input type="text" name="existing_files[{{ $file->id }}][season]" value="{{ $file->season }}" class="form-control" placeholder="e.g. Season 1">
+                </div>
                 <div class="col-md-4">
                   <label>Variant</label>
                   <input type="text" name="existing_files[{{ $file->id }}][variant]" value="{{ $file->variant }}" class="form-control">
@@ -158,6 +162,7 @@ document.getElementById('add-presigned-upload').addEventListener('click', async 
     variant: 'Default',
     drm: false,
     duration: null,
+    season: '',
   });
 
   document.getElementById('videos-json').value = JSON.stringify(uploadedVideos);
