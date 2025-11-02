@@ -59,6 +59,10 @@
             <input type="text" class="form-control variant" placeholder="Episode 1 / 720p">
           </div>
           <div class="col-md-2">
+    <label>Season</label>
+    <input type="text" class="form-control season" placeholder="1 / Season 1 / S01">
+  </div>
+          <div class="col-md-2">
             <label>Duration</label>
             <input type="text" class="form-control duration" placeholder="3600 or 01:00:00">
           </div>
@@ -149,6 +153,8 @@ document.getElementById('presignedUploadForm').addEventListener('submit', async 
     const variant = item.querySelector('.variant').value;
     const duration = item.querySelector('.duration').value;
     const drm = item.querySelector('.drm').value;
+    const season = item.querySelector('.season').value;
+
 
     if (!file) continue;
 
@@ -178,6 +184,7 @@ document.getElementById('presignedUploadForm').addEventListener('submit', async 
 
     uploadedVideos.push({
       variant,
+      season,
       duration,
       drm,
       file_url: presignData.file_url,
