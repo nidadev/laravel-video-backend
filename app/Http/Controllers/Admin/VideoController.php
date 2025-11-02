@@ -298,6 +298,7 @@ public function storePresigned(Request $request)
         'videos' => 'required|array|min:1',
         'videos.*.file_url' => 'required|string',
         'videos.*.variant' => 'nullable|string|max:255',
+        'videos.*.season' => 'nullable|string|max:100', // ✅ Added validation
         'videos.*.drm' => 'nullable|boolean',
         'videos.*.duration' => 'nullable|string|max:50',
         'videos.*.original_name' => 'nullable|string',
@@ -312,7 +313,7 @@ public function storePresigned(Request $request)
             'description' => $request->description,
             'category_id' => $request->category_id,
             'subcategory' => $request->subcategory,
-             'thumbnail' => $request->thumbnail, // ✅ added here
+            'thumbnail' => $request->thumbnail,
             'status' => 'ready',
             'created_by' => auth()->id() ?? auth('admin')->id(),
         ]);
@@ -321,6 +322,7 @@ public function storePresigned(Request $request)
         foreach ($request->videos as $file) {
             $video->files()->create([
                 'variant' => $file['variant'] ?? 'Default',
+                'season' => $file['season'] ?? null, // ✅ Added here
                 'file_url' => $file['file_url'],
                 'manifest_url' => null,
                 'drm' => $file['drm'] ?? false,
@@ -335,18 +337,19 @@ public function storePresigned(Request $request)
 
         return response()->json([
             'success' => true,
-            'message' => '✅ Video and metadata saved successfully!',
+            'message' => '✅ Video and metadata (including season) saved successfully!',
             'video_id' => $video->id,
         ]);
 
     } catch (\Exception $e) {
-        \Log::error('Presigned store failed: '.$e->getMessage());
+        \Log::error('Presigned store failed: ' . $e->getMessage());
         return response()->json([
             'success' => false,
             'error' => $e->getMessage(),
         ], 500);
     }
 }
+
 
 public function mostWatched()
 {
