@@ -11,7 +11,7 @@ use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PaymentWebhookController;
 use App\Http\Controllers\Api\TrendingVideoController;
 use App\Http\Controllers\Api\UserApiController;
-use App\Http\Controllers\Api\SubCategoryController;
+use App\Http\Controllers\Api\SubcategoryController;
 
 
 
