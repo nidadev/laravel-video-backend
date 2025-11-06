@@ -7,12 +7,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\VideoFile;
 use App\Models\User;
 use App\Models\Category;
+use App\Models\Subcategory;
+
 
 class Video extends Model
 {
     //
     protected $fillable = ['title','description','created_by',
-    'status','duration','thumbnail','category_id','subcategory'];
+    'status','duration','thumbnail','category_id','subcategory_id'];
 
     public function files(): HasMany
 {
@@ -32,5 +34,9 @@ public function category()
 public function views()
 {
     return $this->hasMany(VideoView::class);
+}
+public function subcategory()
+{
+    return $this->belongsTo(Subcategory::class);
 }
 }
