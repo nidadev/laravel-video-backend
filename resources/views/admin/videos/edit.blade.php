@@ -35,18 +35,22 @@
           </select>
         </div>
 
-        <!-- Subcategory -->
-        <div class="mb-3">
-          <label class="form-label">Subcategory</label>
-          <select name="subcategory" class="form-select" required>
-            <option value="">Select Subcategory</option>
-            @foreach(['Drama', 'Action', 'Comedy', 'Adventure', 'Romance', 'Thriller', 'Horror'] as $sub)
-              <option value="{{ $sub }}" {{ $video->subcategory == $sub ? 'selected' : '' }}>
-                {{ $sub }}
-              </option>
-            @endforeach
-          </select>
-        </div>
+       <!-- Subcategory -->
+<div class="mb-3">
+    <label class="form-label">Subcategory</label>
+    <select name="subcategory_id" class="form-select" required>
+        <option value="">Select Subcategory</option>
+        @foreach (\App\Models\Subcategory::all() as $sub)
+            <option value="{{ $sub->id }}" {{ $video->subcategory_id == $sub->id ? 'selected' : '' }}>
+                {{ $sub->name }}
+            </option>
+        @endforeach
+    </select>
+    @error('subcategory_id')
+        <div class="text-danger small">{{ $message }}</div>
+    @enderror
+</div>
+
 
         <!-- Status -->
         <div class="mb-3">
