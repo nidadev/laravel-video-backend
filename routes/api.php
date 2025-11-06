@@ -11,6 +11,8 @@ use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PaymentWebhookController;
 use App\Http\Controllers\Api\TrendingVideoController;
 use App\Http\Controllers\Api\UserApiController;
+use App\Http\Controllers\Api\SubCategoryController;
+
 
 
 
@@ -51,6 +53,10 @@ Route::middleware(['jwt.auth'])->group(function () {
 
      Route::get('/trendingvideos', [TrendingVideoController::class, 'index']);
      Route::get('/categories', [CategoryController::class, 'index']);
+
+     Route::get('/subcategories', [SubcategoryController::class, 'index']);
+Route::get('/categories/{id}/subcategories', [SubcategoryController::class, 'byCategory']);
+Route::post('/subcategories', [SubcategoryController::class, 'store']);
 
      Route::get('/users', [UserApiController::class, 'index']);
 Route::get('/users/{id}', [UserApiController::class, 'show']);
