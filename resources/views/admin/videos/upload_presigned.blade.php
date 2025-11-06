@@ -26,15 +26,21 @@
       </select>
     </div>
 
-    <div class="mb-3">
-      <label>Subcategory</label>
-      <select name="subcategory" class="form-select">
+  <div class="mb-3">
+    <label class="form-label">Subcategory</label>
+    <select name="subcategory_id" class="form-select">
         <option value="">Select Subcategory</option>
-        @foreach (['Drama','Action','Comedy','Adventure','Romance','Thriller','Horror'] as $sub)
-          <option value="{{ $sub }}">{{ $sub }}</option>
+        @foreach (\App\Models\Subcategory::all() as $sub)
+            <option value="{{ $sub->id }}" {{ old('subcategory_id') == $sub->id ? 'selected' : '' }}>
+                {{ $sub->name }}
+            </option>
         @endforeach
-      </select>
-    </div>
+    </select>
+    @error('subcategory_id')
+        <div class="text-danger small">{{ $message }}</div>
+    @enderror
+</div>
+
 
     <div class="mb-3">
       <label>Thumbnail</label>
@@ -112,7 +118,7 @@ document.getElementById('presignedUploadForm').addEventListener('submit', async 
   const title = document.querySelector('[name="title"]').value;
   const description = document.querySelector('[name="description"]').value;
   const category_id = document.querySelector('[name="category_id"]').value;
-  const subcategory = document.querySelector('[name="subcategory"]').value;
+  const subcategory_id = document.querySelector('[name="subcategory_id"]').value;
   const thumbnail = document.getElementById('thumbnailFile').files[0];
   const videoItems = document.querySelectorAll('.video-file-item');
 
@@ -205,7 +211,7 @@ document.getElementById('presignedUploadForm').addEventListener('submit', async 
       title,
       description,
       category_id,
-      subcategory,
+      subcategory_id,
       thumbnail: thumbnailUrl,
       videos: uploadedVideos
     })

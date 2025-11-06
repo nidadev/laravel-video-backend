@@ -144,8 +144,9 @@ class VideoController extends Controller
     }
 }*/
 
-public function store(Request $request)
+/*public function store(Request $request)
 {
+    dd($request->only(['category_id','subcategory_id']));
     $request->validate([
         'title' => 'required|string|max:255',
         'description' => 'nullable|string',
@@ -228,7 +229,7 @@ public function store(Request $request)
             'upload_error' => 'Video upload failed. Please try again or check the logs.',
         ]);
     }
-}
+}*/
 
 
 
@@ -455,8 +456,9 @@ public function generatePresignedUrl(Request $request)
     }
 }
 
-public function storePresigned(Request $request)
+/*public function storePresigned(Request $request)
 {
+    //dd('123');
     $request->validate([
         'title' => 'required|string|max:255',
         'description' => 'nullable|string',
@@ -516,7 +518,71 @@ public function storePresigned(Request $request)
             'error' => $e->getMessage(),
         ], 500);
     }
+}*/
+
+public function storePresigned(Request $request)
+{
+    $request->validate([
+        'title' => 'required|string|max:255',
+        'description' => 'nullable|string',
+        'category_id' => 'required|exists:categories,id',
+        'subcategory_id' => 'nullable|exists:subcategories,id', // ✅ updated
+        'thumbnail' => 'nullable|string',
+        'videos' => 'required|array|min:1',
+        'videos.*.file_url' => 'required|string',
+        'videos.*.variant' => 'nullable|string|max:255',
+        'videos.*.season' => 'nullable|string|max:100', 
+        'videos.*.drm' => 'nullable|boolean',
+        'videos.*.duration' => 'nullable|string|max:50',
+        'videos.*.original_name' => 'nullable|string',
+        'videos.*.size' => 'nullable|numeric',
+        'videos.*.mime' => 'nullable|string',
+    ]);
+
+    try {
+        // ✅ Create main Video record with subcategory_id
+        $video = Video::create([
+            'title' => $request->title,
+            'description' => $request->description,
+            'category_id' => $request->category_id,
+            'subcategory_id' => $request->subcategory_id, // ✅ updated
+            'thumbnail' => $request->thumbnail,
+            'status' => 'ready',
+            'created_by' => auth()->id() ?? auth('admin')->id(),
+        ]);
+
+        // ✅ Save uploaded file metadata
+        foreach ($request->videos as $file) {
+            $video->files()->create([
+                'variant' => $file['variant'] ?? 'Default',
+                'season' => $file['season'] ?? null,
+                'file_url' => $file['file_url'],
+                'manifest_url' => null,
+                'drm' => $file['drm'] ?? false,
+                'duration' => $file['duration'] ?? null,
+                'meta' => json_encode([
+                    'original_name' => $file['original_name'] ?? null,
+                    'size' => $file['size'] ?? null,
+                    'mime' => $file['mime'] ?? null,
+                ]),
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => '✅ Video and metadata (including season) saved successfully!',
+            'video_id' => $video->id,
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Presigned store failed: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage(),
+        ], 500);
+    }
 }
+
 
 
 public function mostWatched()
