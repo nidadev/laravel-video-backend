@@ -17,24 +17,22 @@
     </div>
 
     <div class="mb-3">
-      <label>Category</label>
-      <select name="category_id" class="form-select" required>
-        <option value="">Select category</option>
+    <label>Category</label>
+    <select name="category_id" class="form-select" id="category-select" required>
+        <option value="">Select Category</option>
         @foreach ($categories as $cat)
-          <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+            <option value="{{ $cat->id }}">{{ $cat->name }}</option>
         @endforeach
-      </select>
-    </div>
+    </select>
+    @error('category_id')
+        <div class="text-danger small">{{ $message }}</div>
+    @enderror
+</div>
 
-  <div class="mb-3">
+<div class="mb-3">
     <label class="form-label">Subcategory</label>
-    <select name="subcategory_id" class="form-select">
+    <select name="subcategory_id" class="form-select" id="subcategory-select">
         <option value="">Select Subcategory</option>
-        @foreach (\App\Models\Subcategory::all() as $sub)
-            <option value="{{ $sub->id }}" {{ old('subcategory_id') == $sub->id ? 'selected' : '' }}>
-                {{ $sub->name }}
-            </option>
-        @endforeach
     </select>
     @error('subcategory_id')
         <div class="text-danger small">{{ $message }}</div>
@@ -94,7 +92,39 @@
 </div>
 
 @push('scripts')
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
+  $(document).ready(function() {
+    $('#category-select').on('change', function() {
+        let categoryId = $(this).val();
+        let subcategorySelect = $('#subcategory-select');
+
+        subcategorySelect.html('<option value="">Loading...</option>');
+
+        if(categoryId) {
+            $.ajax({
+                url: '/api/categories/' + categoryId + '/subcategories',
+                type: 'GET',
+                success: function(response) {
+                    subcategorySelect.empty();
+                    subcategorySelect.append('<option value="">Select Subcategory</option>');
+                    if(response.success && response.data.length > 0) {
+                        $.each(response.data, function(index, subcat) {
+                            subcategorySelect.append(
+                                `<option value="${subcat.id}">${subcat.name}</option>`
+                            );
+                        });
+                    }
+                },
+                error: function() {
+                    subcategorySelect.html('<option value="">Error loading subcategories</option>');
+                }
+            });
+        } else {
+            subcategorySelect.html('<option value="">Select Subcategory</option>');
+        }
+    });
+});
 document.getElementById('add-video-file').addEventListener('click', function() {
   const container = document.getElementById('video-files-container');
   const firstItem = container.querySelector('.video-file-item');
