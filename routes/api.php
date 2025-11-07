@@ -52,11 +52,7 @@ Route::middleware(['jwt.auth'])->group(function () {
     //Route::get('/payment/success', [PaymentController::class, 'paymentSuccess']);
 
      Route::get('/trendingvideos', [TrendingVideoController::class, 'index']);
-     Route::get('/categories', [CategoryController::class, 'index']);
-
-     Route::get('/subcategories', [SubcategoryController::class, 'index']);
-Route::get('/categories/{id}/subcategories', [SubcategoryController::class, 'byCategory']);
-Route::post('/subcategories', [SubcategoryController::class, 'store']);
+     
 
      Route::get('/users', [UserApiController::class, 'index']);
 Route::get('/users/{id}', [UserApiController::class, 'show']);
@@ -82,6 +78,11 @@ Route::prefix('auth')->group(function () {
     Route::post('send-otp', [OtpController::class, 'sendOtp']);
     Route::post('verify-otp', [OtpController::class, 'verifyOtp']);
 });
+Route::get('/categories', [CategoryController::class, 'index']);
+
+     Route::get('/subcategories', [SubcategoryController::class, 'index']);
+Route::get('/categories/{id}/subcategories', [SubcategoryController::class, 'byCategory']);
+Route::post('/subcategories', [SubcategoryController::class, 'store']);
 
 Route::post('/payment/webhook', [PaymentWebhookController::class, 'handleWebhook']);
 
