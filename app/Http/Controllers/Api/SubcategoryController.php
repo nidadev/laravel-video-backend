@@ -24,7 +24,12 @@ class SubcategoryController extends Controller
     public function byCategory($categoryId)
     {
         $subcategories = Subcategory::where('category_id', $categoryId)->get();
-        return response()->json($subcategories);
+        return response()->json([
+        'message' => 'Subcategories fetched successfully',
+        'data' => $subcategories,
+        'response' => 200,
+        'success' => true,
+    ], 200);
     }
 
     // Optionally: create new subcategory
