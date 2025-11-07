@@ -20,6 +20,9 @@
   <div class="sidebar">
     <h4 class="p-3">Admin Panel</h4>
     <a href="{{ route('admin.dashboard') }}">🏠 Dashboard</a>
+    <a href="{{ route('admin.categories.index') }}">📂 Categories</a>
+        <a href="{{ route('admin.subcategories.index') }}">📂 SubCategories</a>
+
     <a href="{{ route('admin.videos') }}">🎬 Videos</a>
         <a href="{{ route('admin.users.index') }}"> 👥 Manage User</a>
     <a href="{{ route('admin.trending.index') }}">🔥 Trending Videos</a>
