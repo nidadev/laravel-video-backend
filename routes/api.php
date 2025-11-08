@@ -32,11 +32,7 @@ Route::middleware(['jwt.auth'])->group(function () {
 
     // Video Routes
     //Route::post('/videos', [VideoController::class, 'store']);
-    Route::get('/videos', [VideoController::class, 'index']);
-    Route::get('/videos/{id}', [VideoController::class, 'show']);
-    Route::get('/videos-by-category', [VideoController::class, 'fetchByCategory']);
-
-    Route::post('/videos/{id}/like', [VideoController::class, 'like']);
+  
 
     // Subscription
     Route::post('/subscribe', [SubscriptionController::class, 'purchase']);
@@ -83,6 +79,12 @@ Route::get('/categories', [CategoryController::class, 'index']);
      Route::get('/subcategories', [SubcategoryController::class, 'index']);
 Route::get('/categories/{id}/subcategories', [SubcategoryController::class, 'byCategory']);
 Route::post('/subcategories', [SubcategoryController::class, 'store']);
+
+  Route::get('/videos', [VideoController::class, 'index']);
+    Route::get('/videos/{id}', [VideoController::class, 'show']);
+    Route::get('/videos-by-category', [VideoController::class, 'fetchByCategory']);
+
+    Route::post('/videos/{id}/like', [VideoController::class, 'like']);
 
 Route::post('/payment/webhook', [PaymentWebhookController::class, 'handleWebhook']);
 
