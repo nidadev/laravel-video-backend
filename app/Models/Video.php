@@ -8,6 +8,8 @@ use App\Models\VideoFile;
 use App\Models\User;
 use App\Models\Category;
 use App\Models\Subcategory;
+use App\Models\VideoView;
+
 
 
 class Video extends Model

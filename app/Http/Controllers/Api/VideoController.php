@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use App\Models\Video;
 use Illuminate\Support\Facades\Storage;
 use App\Models\VideoView;
+use App\Models\TrendingVideo;
+
 
 class VideoController extends Controller
 {
@@ -422,6 +424,73 @@ public function recordView(Request $request, $videoId)
         ], 500);
     }
 }
+
+public function trendingAndMostWatched()
+{
+    \Log::info('Trending API hit'); // log entry
+
+    try {
+        $trendingVideos = Video::with(['files', 'category', 'subcategory'])
+            ->where('status', 'ready')
+            ->where('is_trending', true)
+            ->latest()
+            ->take(10)
+            ->get();
+
+        \Log::info('Trending Videos Count: '. $trendingVideos->count());
+
+        $mostWatchedVideos = Video::with(['files', 'category', 'subcategory'])
+            ->withCount('views')
+            ->where('status', 'ready')
+            ->orderBy('views_count', 'desc')
+            ->take(10)
+            ->get();
+
+        \Log::info('Most Watched Videos Count: '. $mostWatchedVideos->count());
+
+        return response()->json([
+            'success' => true,
+            'trending_videos' => $trendingVideos->map(fn($v) => [
+                'id' => $v->id,
+                'title' => $v->title,
+                'thumbnail' => $v->thumbnail,
+                'category' => optional($v->category)->only('id','name'),
+                'subcategory' => optional($v->subcategory)->only('id','name'),
+                'files' => $v->files->map(fn($f) => [
+                    'id' => $f->id,
+                    'variant' => $f->variant,
+                    'url' => $f->file_url,
+                ]),
+            ]),
+            'most_watched_videos' => $mostWatchedVideos->map(fn($v) => [
+                'id' => $v->id,
+                'title' => $v->title,
+                'thumbnail' => $v->thumbnail,
+                'category' => optional($v->category)->only('id','name'),
+                'subcategory' => optional($v->subcategory)->only('id','name'),
+                'views_count' => $v->views_count,
+                'files' => $v->files->map(fn($f) => [
+                    'id' => $f->id,
+                    'variant' => $f->variant,
+                    'url' => $f->file_url,
+                ]),
+            ]),
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Trending & Most Watched Error: '.$e->getMessage().' at '.$e->getFile().' line '.$e->getLine());
+
+        return response()->json([
+            'message' => 'Failed to fetch video details',
+            'data' => [],
+            'response' => 500,
+            'success' => false,
+        ], 500);
+    }
+}
+
+
+
 
 
 
