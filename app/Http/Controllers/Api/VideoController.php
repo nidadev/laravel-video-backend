@@ -310,16 +310,17 @@ public function fetchByCategory(Request $request)
     try {
         $request->validate([
             'category_id' => 'required|exists:categories,id',
-            'subcategory' => 'nullable|string',
+            'subcategory_id' => 'nullable|exists:subcategories,id',
         ]);
 
-        $query = Video::with(['category', 'files'])
+        // Base query
+        $query = Video::with(['category', 'subcategory', 'files'])
             ->where('status', 'ready')
             ->where('category_id', $request->category_id);
 
-        // If subcategory is provided (stored as string)
-        if ($request->subcategory) {
-            $query->where('subcategory', $request->subcategory);
+        // Filter by subcategory if provided
+        if ($request->filled('subcategory_id')) {
+            $query->where('subcategory_id', $request->subcategory_id);
         }
 
         $videos = $query->latest()->get();
@@ -333,6 +334,7 @@ public function fetchByCategory(Request $request)
             ], 404);
         }
 
+        // Format response
         $formatted = $videos->map(function ($video) {
             return [
                 'id' => $video->id,
@@ -343,7 +345,10 @@ public function fetchByCategory(Request $request)
                     'id' => $video->category->id,
                     'name' => $video->category->name,
                 ] : null,
-                'subcategory' => $video->subcategory ?? null, // stored as string
+                'subcategory' => $video->subcategory ? [
+                    'id' => $video->subcategory->id,
+                    'name' => $video->subcategory->name,
+                ] : null,
                 'files' => $video->files->map(function ($file) {
                     return [
                         'id' => $file->id,
@@ -372,6 +377,7 @@ public function fetchByCategory(Request $request)
         ], 500);
     }
 }
+
 
 public function recordView(Request $request, $videoId)
 {
