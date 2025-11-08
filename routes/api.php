@@ -31,7 +31,6 @@ Route::middleware(['jwt.auth'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
 
     // Video Routes
-    //Route::post('/videos', [VideoController::class, 'store']);
   
 
     // Subscription
@@ -47,7 +46,6 @@ Route::middleware(['jwt.auth'])->group(function () {
     // Route::post('/payment/checkout', [PaymentController::class, 'createCheckoutSession']);
     //Route::get('/payment/success', [PaymentController::class, 'paymentSuccess']);
 
-     Route::get('/trendingvideos', [TrendingVideoController::class, 'index']);
      
 
      Route::get('/users', [UserApiController::class, 'index']);
@@ -85,6 +83,9 @@ Route::post('/subcategories', [SubcategoryController::class, 'store']);
     Route::get('/videos-by-category', [VideoController::class, 'fetchByCategory']);
 
     Route::post('/videos/{id}/like', [VideoController::class, 'like']);
+
+         Route::get('/trendingvideos', [TrendingVideoController::class, 'index']);
+
 
 Route::post('/payment/webhook', [PaymentWebhookController::class, 'handleWebhook']);
 
