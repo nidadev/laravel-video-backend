@@ -595,4 +595,16 @@ public function mostWatched()
     return view('admin.videos.most_watched', compact('videos'));
 }
 
+public function toggleTrending(Request $request, $id)
+{
+    $video = Video::findOrFail($id);
+
+    // Checkbox sends "on" or nothing
+    $video->is_trending = $request->has('is_trending');
+    $video->save();
+
+    return back()->with('success', 'Video trending status updated successfully.');
+}
+
+
 }

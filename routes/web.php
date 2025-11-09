@@ -70,6 +70,7 @@ Route::get('/categories', [CategoryController::class, 'index'])->name('admin.cat
     Route::get('/subcategories/{subcategory}/edit', [SubcategoryController::class, 'edit'])->name('admin.subcategories.edit');
     Route::put('/subcategories/{subcategory}/update', [SubcategoryController::class, 'update'])->name('admin.subcategories.update');
     Route::delete('/subcategories/{subcategory}/delete', [SubcategoryController::class, 'destroy'])->name('admin.subcategories.destroy');
+Route::patch('/admin/videos/{id}/trending', [VideoController::class, 'toggleTrending'])->name('admin.videos.toggleTrending');
 
 });
 

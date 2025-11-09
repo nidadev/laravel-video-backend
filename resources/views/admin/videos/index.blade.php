@@ -30,6 +30,8 @@
             <th>Category</th>
             <th>Status</th>
             <th>Created</th>
+                    <th>Trending</th>
+
             <th>Actions</th>
           </tr>
         </thead>
@@ -58,6 +60,15 @@
                 <span class="badge bg-{{ $badge }}">{{ ucfirst($video->status) }}</span>
               </td>
               <td>{{ $video->created_at->format('Y-m-d') }}</td>
+                <td>
+                <form method="POST" action="{{ route('admin.videos.toggleTrending', $video->id) }}">
+                    @csrf
+                    @method('PATCH')
+                    <input type="checkbox" name="is_trending" value="1"
+                        {{ $video->is_trending ? 'checked' : '' }}
+                        onchange="this.form.submit()">
+                </form>
+            </td>
               <td>
                 <a href="{{ route('admin.videos.edit', $video->id) }}" class="btn btn-sm btn-outline-primary">
                   ✏️ Edit
