@@ -425,60 +425,58 @@ public function recordView(Request $request, $videoId)
     }
 }
 
-public function trendingAndMostWatched()
+public function trendingAndMostWatched(Request $request)
 {
-    \Log::info('Trending API hit'); // log entry
-
     try {
-        $trendingVideos = Video::with(['files', 'category', 'subcategory'])
+        // ✅ Base queries
+        $trendingQuery = Video::with(['files', 'category', 'subcategory'])
             ->where('status', 'ready')
-            ->where('is_trending', true)
-            ->latest()
-            ->take(10)
-            ->get();
+            ->where('is_trending', true);
 
-        \Log::info('Trending Videos Count: '. $trendingVideos->count());
-
-        $mostWatchedVideos = Video::with(['files', 'category', 'subcategory'])
+        $mostWatchedQuery = Video::with(['files', 'category', 'subcategory'])
             ->withCount('views')
-            ->where('status', 'ready')
-            ->orderBy('views_count', 'desc')
-            ->take(10)
-            ->get();
+            ->where('status', 'ready');
 
-        \Log::info('Most Watched Videos Count: '. $mostWatchedVideos->count());
+        // ✅ Apply filters if provided
+        if ($request->has('category_id') && !empty($request->category_id)) {
+            $trendingQuery->where('category_id', $request->category_id);
+            $mostWatchedQuery->where('category_id', $request->category_id);
+        }
+
+        if ($request->has('subcategory_id') && !empty($request->subcategory_id)) {
+            $trendingQuery->where('subcategory_id', $request->subcategory_id);
+            $mostWatchedQuery->where('subcategory_id', $request->subcategory_id);
+        }
+
+        // ✅ Fetch data
+        $trendingVideos = $trendingQuery->latest()->take(10)->get();
+        $mostWatchedVideos = $mostWatchedQuery->orderBy('views_count', 'desc')->take(10)->get();
+
+        // ✅ Format response data
+        $formatVideo = fn($v) => [
+            'id' => $v->id,
+            'title' => $v->title,
+            'thumbnail' => $v->thumbnail,
+            'category' => optional($v->category)->only('id', 'name'),
+            'subcategory' => optional($v->subcategory)->only('id', 'name'),
+            'views_count' => $v->views_count ?? 0,
+            'files' => $v->files->map(fn($f) => [
+                'id' => $f->id,
+                'variant' => $f->variant,
+                'url' => $f->file_url,
+            ]),
+        ];
 
         return response()->json([
             'success' => true,
-            'trending_videos' => $trendingVideos->map(fn($v) => [
-                'id' => $v->id,
-                'title' => $v->title,
-                'thumbnail' => $v->thumbnail,
-                'category' => optional($v->category)->only('id','name'),
-                'subcategory' => optional($v->subcategory)->only('id','name'),
-                'files' => $v->files->map(fn($f) => [
-                    'id' => $f->id,
-                    'variant' => $f->variant,
-                    'url' => $f->file_url,
-                ]),
-            ]),
-            'most_watched_videos' => $mostWatchedVideos->map(fn($v) => [
-                'id' => $v->id,
-                'title' => $v->title,
-                'thumbnail' => $v->thumbnail,
-                'category' => optional($v->category)->only('id','name'),
-                'subcategory' => optional($v->subcategory)->only('id','name'),
-                'views_count' => $v->views_count,
-                'files' => $v->files->map(fn($f) => [
-                    'id' => $f->id,
-                    'variant' => $f->variant,
-                    'url' => $f->file_url,
-                ]),
-            ]),
-        ]);
+            'message' => 'Trending & most watched videos fetched successfully',
+            'filters_applied' => $request->only(['category_id', 'subcategory_id']) ?: 'none',
+            'trending_videos' => $trendingVideos->map($formatVideo)->values(),
+            'most_watched_videos' => $mostWatchedVideos->map($formatVideo)->values(),
+        ], 200);
 
     } catch (\Exception $e) {
-        \Log::error('Trending & Most Watched Error: '.$e->getMessage().' at '.$e->getFile().' line '.$e->getLine());
+        \Log::error('Trending & Most Watched Error: ' . $e->getMessage());
 
         return response()->json([
             'message' => 'Failed to fetch video details',
@@ -488,6 +486,7 @@ public function trendingAndMostWatched()
         ], 500);
     }
 }
+
 
 
 
