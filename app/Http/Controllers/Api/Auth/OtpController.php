@@ -23,7 +23,8 @@ class OtpController extends Controller
 {
     try {
         $request->validate([
-            'phone' => 'required|string|min:10|max:15',
+            'prefix' => 'nullable|string|max:5', // example: +92
+            'phone' => 'required|string|min:6|max:15',
         ]);
     } catch (ValidationException $e) {
         return response()->json([
@@ -34,7 +35,9 @@ class OtpController extends Controller
         ], 422);
     }
 
-    $phone = $request->phone;
+    // ✅ Combine prefix and phone
+    $prefix = $request->prefix ?? '+92'; // default +92 if not provided
+    $phone = $prefix . ltrim($request->phone, '+');
 
     // 📛 Rate limit check
     $recent = Otp::where('phone', $phone)
@@ -60,8 +63,9 @@ class OtpController extends Controller
         'expires_at' => now()->addMinutes(15),
     ]);
 
-    // ✅ Send OTP via Twilio
-    /*try {
+    // ✅ (Optional) Twilio sending logic commented
+    /*
+    try {
         $twilio = new Client(env('TWILIO_SID'), env('TWILIO_AUTH_TOKEN'));
         $twilio->messages->create($phone, [
             'from' => env('TWILIO_FROM'),
@@ -69,88 +73,41 @@ class OtpController extends Controller
         ]);
     } catch (\Exception $e) {
         \Log::error('Twilio SMS failed: ' . $e->getMessage());
-
         return response()->json([
             'message' => 'Failed to send OTP via SMS',
             'data' => ['error' => $e->getMessage()],
             'response' => 500,
             'success' => false,
         ], 500);
-    }*/
+    }
+    */
 
     // ✅ Success response
     return response()->json([
         'message' => 'OTP sent successfully via SMS',
         'data' => [
             'phone' => $phone,
-            // remove otp in production
-            'otp' => $otp,
+            'otp' => $otp, // ⚠️ remove in production
         ],
         'response' => 200,
         'success' => true,
     ], 200);
 }
-  /*public function sendOtp(Request $request)
-{
-    try {
-        $request->validate([
-            'phone' => 'required|string|min:10|max:15',
-        ]);
-    } catch (ValidationException $e) {
-        return response()->json([
-            'message' => $e->validator->errors()->first(), // first error message
-            'data' => [],
-            'response' => 422,
-            'success' => false,
-        ], 422);
-    }
-
-    $phone = $request->phone;
-
-    // 📛 Rate limit check
-    $recent = Otp::where('phone', $phone)
-        ->where('created_at', '>=', now()->subMinutes(2))
-        ->count();
-
-    if ($recent > 2) {
-        return response()->json([
-            'message' => 'Too many OTP requests. Please wait.',
-            'data' => [],
-            'response' => 429,
-            'success' => false,
-        ], 429);
-    }
-
-    // ✅ Generate OTP
-    $otp = rand(1000, 9999);
-
-    Otp::create([
-        'phone' => $phone,
-        'otp_code' => $otp,
-        'expires_at' => now()->addMinutes(15),
-    ]);
-
-    return response()->json([
-        'message' => 'Otp send successfully',
-        'data' => [
-            'otp' => $otp,
-            'phone' => $phone
-        ],
-        'response' => 200,
-        'success' => true,
-    ], 200);
-}*/
 
 
-    // 🔐 Verify OTP & issue JWT
-   public function verifyOtp(Request $request)
+ public function verifyOtp(Request $request)
 {
     $request->validate([
-        'phone' => 'required',
+        'prefix' => 'nullable|string|max:5',
+        'phone' => 'required|string',
         'otp' => 'required',
     ]);
 
-    $otpRecord = Otp::where('phone', $request->phone)
+    // ✅ Combine prefix and phone
+    $prefix = $request->prefix ?? '+92';
+    $phone = $prefix . ltrim($request->phone, '+');
+
+    $otpRecord = Otp::where('phone', $phone)
                     ->where('otp_code', $request->otp)
                     ->latest()
                     ->first();
@@ -166,24 +123,24 @@ class OtpController extends Controller
 
     // ✅ Create or find user
     $user = User::firstOrCreate(
-        ['phone' => $request->phone],
+        ['phone' => $phone],
         ['name' => 'User_' . Str::random(5), 'password' => bcrypt(Str::random(10))]
     );
 
     // 🧹 Delete all OTPs for this phone
-    Otp::where('phone', $request->phone)->delete();
+    Otp::where('phone', $phone)->delete();
 
-    // 🕒 Set JWT lifetime to 7 days
+    // 🕒 JWT lifetime 7 days
     JWTAuth::factory()->setTTL(10080);
-
-    // 🔐 Generate JWT token
     $token = JWTAuth::fromUser($user);
 
-     $subscription = $user->has('subscriptions')
-        ? $user->subscriptions()->active()->with('plan')->latest('end_date')->first()
-        : null;
+    // ✅ Subscription (if exists)
+    $subscription = $user->subscriptions()
+        ->active()
+        ->with('plan')
+        ->latest('end_date')
+        ->first();
 
-    // 🧭 Prepare subscription data
     $subscriptionData = $subscription ? [
         'plan_name' => $subscription->plan->name ?? null,
         'plan_price' => $subscription->plan->price ?? null,
@@ -195,13 +152,13 @@ class OtpController extends Controller
     ] : null;
 
     return response()->json([
-        'message' => 'Otp verified successfully',
+        'message' => 'OTP verified successfully',
         'data' => [
             'token' => $token,
             'user' => $user,
             'subscription_status' => $subscription ? 'active' : 'inactive',
             'subscription' => $subscriptionData,
-            'expires_in' => JWTAuth::factory()->getTTL() * 60, // in seconds
+            'expires_in' => JWTAuth::factory()->getTTL() * 60, // seconds
             'token_type' => 'bearer',
         ],
         'response' => 200,
