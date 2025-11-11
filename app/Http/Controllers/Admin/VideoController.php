@@ -413,20 +413,27 @@ public function createPresigned()
     return view('admin.videos.upload_presigned', compact('categories'));
 }
 
+
+
 public function generatePresignedUrl(Request $request)
 {
     $request->validate([
         'filename' => 'required|string',
         'content_type' => 'required|string',
-        'type' => 'nullable|string|in:video,thumbnail', // 👈 NEW
+        'type' => 'nullable|string|in:video,thumbnail,video_image', // added video_image
     ]);
 
     try {
         $s3 = Storage::disk('s3')->getClient();
         $bucket = config('filesystems.disks.s3.bucket');
 
-        // 👇 Determine folder based on upload type
-        $folder = $request->type === 'thumbnail' ? 'thumbnails/' : 'videos/';
+        // Determine folder based on upload type
+        $folder = match ($request->type) {
+            'thumbnail' => 'thumbnails/',
+            'video_image' => 'videos/images/',
+            default => 'videos/',
+        };
+
         $key = $folder . uniqid() . '-' . $request->filename;
 
         $cmd = $s3->getCommand('PutObject', [
@@ -440,6 +447,7 @@ public function generatePresignedUrl(Request $request)
         $presignedUrl = (string) $presignedRequest->getUri();
 
         return response()->json([
+            'success' => true,
             'url' => $presignedUrl,
             'file_url' => Storage::disk('s3')->url($key),
         ]);
@@ -450,75 +458,14 @@ public function generatePresignedUrl(Request $request)
         ]);
 
         return response()->json([
+            'success' => false,
             'error' => 'Failed to generate presigned URL',
             'details' => $e->getMessage(),
         ], 500);
     }
 }
 
-/*public function storePresigned(Request $request)
-{
-    //dd('123');
-    $request->validate([
-        'title' => 'required|string|max:255',
-        'description' => 'nullable|string',
-        'category_id' => 'required|exists:categories,id',
-        'subcategory' => 'nullable|string|max:100',
-        'thumbnail' => 'nullable|string',
-        'videos' => 'required|array|min:1',
-        'videos.*.file_url' => 'required|string',
-        'videos.*.variant' => 'nullable|string|max:255',
-        'videos.*.season' => 'nullable|string|max:100', // ✅ Added validation
-        'videos.*.drm' => 'nullable|boolean',
-        'videos.*.duration' => 'nullable|string|max:50',
-        'videos.*.original_name' => 'nullable|string',
-        'videos.*.size' => 'nullable|numeric',
-        'videos.*.mime' => 'nullable|string',
-    ]);
 
-    try {
-        // ✅ Create main Video record
-        $video = Video::create([
-            'title' => $request->title,
-            'description' => $request->description,
-            'category_id' => $request->category_id,
-            'subcategory' => $request->subcategory,
-            'thumbnail' => $request->thumbnail,
-            'status' => 'ready',
-            'created_by' => auth()->id() ?? auth('admin')->id(),
-        ]);
-
-        // ✅ Save uploaded file metadata
-        foreach ($request->videos as $file) {
-            $video->files()->create([
-                'variant' => $file['variant'] ?? 'Default',
-                'season' => $file['season'] ?? null, // ✅ Added here
-                'file_url' => $file['file_url'],
-                'manifest_url' => null,
-                'drm' => $file['drm'] ?? false,
-                'duration' => $file['duration'] ?? null,
-                'meta' => [
-                    'original_name' => $file['original_name'] ?? null,
-                    'size' => $file['size'] ?? null,
-                    'mime' => $file['mime'] ?? null,
-                ],
-            ]);
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => '✅ Video and metadata (including season) saved successfully!',
-            'video_id' => $video->id,
-        ]);
-
-    } catch (\Exception $e) {
-        \Log::error('Presigned store failed: ' . $e->getMessage());
-        return response()->json([
-            'success' => false,
-            'error' => $e->getMessage(),
-        ], 500);
-    }
-}*/
 
 public function storePresigned(Request $request)
 {
