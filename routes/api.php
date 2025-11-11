@@ -87,6 +87,7 @@ Route::post('/videos/{id}/like', [VideoController::class, 'like']);
 Route::get('/trendingvideos', [TrendingVideoController::class, 'index']);
 
 Route::get('/videos/trendingwatched', [VideoController::class, 'trendingAndMostWatched']);
+Route::get('/dashboard', [VideoController::class, 'dashboard']);
 
 
 Route::post('/payment/webhook', [PaymentWebhookController::class, 'handleWebhook']);

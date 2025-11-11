@@ -526,12 +526,13 @@ public function storePresigned(Request $request)
         'title' => 'required|string|max:255',
         'description' => 'nullable|string',
         'category_id' => 'required|exists:categories,id',
-        'subcategory_id' => 'nullable|exists:subcategories,id', // ✅ updated
+        'subcategory_id' => 'nullable|exists:subcategories,id',
         'thumbnail' => 'nullable|string',
         'videos' => 'required|array|min:1',
         'videos.*.file_url' => 'required|string',
+        'videos.*.image' => 'nullable|string', // ✅ use database field name
         'videos.*.variant' => 'nullable|string|max:255',
-        'videos.*.season' => 'nullable|string|max:100', 
+        'videos.*.season' => 'nullable|string|max:100',
         'videos.*.drm' => 'nullable|boolean',
         'videos.*.duration' => 'nullable|string|max:50',
         'videos.*.original_name' => 'nullable|string',
@@ -545,7 +546,7 @@ public function storePresigned(Request $request)
             'title' => $request->title,
             'description' => $request->description,
             'category_id' => $request->category_id,
-            'subcategory_id' => $request->subcategory_id, // ✅ updated
+            'subcategory_id' => $request->subcategory_id,
             'thumbnail' => $request->thumbnail,
             'status' => 'ready',
             'created_by' => auth()->id() ?? auth('admin')->id(),
@@ -557,6 +558,7 @@ public function storePresigned(Request $request)
                 'variant' => $file['variant'] ?? 'Default',
                 'season' => $file['season'] ?? null,
                 'file_url' => $file['file_url'],
+                'image' => $file['image'] ?? null, // ✅ save in 'image' column
                 'manifest_url' => null,
                 'drm' => $file['drm'] ?? false,
                 'duration' => $file['duration'] ?? null,
@@ -570,7 +572,7 @@ public function storePresigned(Request $request)
 
         return response()->json([
             'success' => true,
-            'message' => '✅ Video and metadata (including season) saved successfully!',
+            'message' => '✅ Video and metadata (including image and season) saved successfully!',
             'video_id' => $video->id,
         ]);
 
@@ -582,6 +584,7 @@ public function storePresigned(Request $request)
         ], 500);
     }
 }
+
 
 
 
