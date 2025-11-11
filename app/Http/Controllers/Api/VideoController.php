@@ -502,7 +502,12 @@ public function dashboard()
     $categories = Category::all(['id', 'name', 'slug']);
 
     // 2. Video Banner Object (Random Series)
-    $bannerVideo = Video::inRandomOrder()->first(['id', 'title', 'thumbnail']);
+    $bannerVideo = Video::with(['files' => function($query) {
+        $query->select('id', 'video_id', 'variant', 'file_url', 'manifest_url', 'image', 'duration');
+    }])
+    ->inRandomOrder()
+    ->first(['id', 'title', 'thumbnail']);
+
 
     // 3. Trending List
     $trending = TrendingVideo::where('is_active', true)
