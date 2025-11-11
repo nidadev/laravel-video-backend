@@ -8,6 +8,8 @@ use App\Models\Video;
 use Illuminate\Support\Facades\Storage;
 use App\Models\VideoView;
 use App\Models\TrendingVideo;
+use App\Models\Category;
+
 
 
 class VideoController extends Controller
@@ -493,6 +495,37 @@ public function trendingAndMostWatched(Request $request)
         ], 500);
     }
 }
+
+public function dashboard()
+{
+    // 1. Category List
+    $categories = Category::all(['id', 'name', 'slug']);
+
+    // 2. Video Banner Object (Random Series)
+    $bannerVideo = Video::inRandomOrder()->first(['id', 'title', 'thumbnail']);
+
+    // 3. Trending List
+    $trending = TrendingVideo::where('is_active', true)
+                    ->orderBy('created_at', 'desc')
+                    ->get(['id', 'title', 'thumbnail', 'video_url']);
+
+    // 4. Most Watched List
+    $mostWatched = Video::withCount('views')
+                    ->orderBy('views_count', 'desc')
+                    ->take(5)
+                    ->get(['id', 'title', 'thumbnail', 'category_id', 'subcategory_id']);
+
+    return response()->json([
+        'success' => true,
+        'data' => [
+            'categories' => $categories,
+            'banner_video' => $bannerVideo,
+            'trending' => $trending,
+            'most_watched' => $mostWatched,
+        ]
+    ]);
+}
+
 
 
 
