@@ -437,22 +437,22 @@ public function trendingAndMostWatched(Request $request)
             ->withCount('views')
             ->where('status', 'ready');
 
-        // ✅ Apply filters if provided
-        if ($request->has('category_id') && !empty($request->category_id)) {
+        // ✅ Apply filters (only if not empty)
+        if (!empty($request->category_id)) {
             $trendingQuery->where('category_id', $request->category_id);
             $mostWatchedQuery->where('category_id', $request->category_id);
         }
 
-        if ($request->has('subcategory_id') && !empty($request->subcategory_id)) {
+        if (!empty($request->subcategory_id)) {
             $trendingQuery->where('subcategory_id', $request->subcategory_id);
             $mostWatchedQuery->where('subcategory_id', $request->subcategory_id);
         }
 
-        // ✅ Fetch data
+        // ✅ Fetch videos
         $trendingVideos = $trendingQuery->latest()->take(10)->get();
         $mostWatchedVideos = $mostWatchedQuery->orderBy('views_count', 'desc')->take(10)->get();
 
-        // ✅ Format response data
+        // ✅ Format each video
         $formatVideo = fn($v) => [
             'id' => $v->id,
             'title' => $v->title,
@@ -467,12 +467,19 @@ public function trendingAndMostWatched(Request $request)
             ]),
         ];
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Trending & most watched videos fetched successfully',
+        // ✅ Prepare data
+        $data = [
             'filters_applied' => $request->only(['category_id', 'subcategory_id']) ?: 'none',
             'trending_videos' => $trendingVideos->map($formatVideo)->values(),
             'most_watched_videos' => $mostWatchedVideos->map($formatVideo)->values(),
+        ];
+
+        // ✅ Success response
+        return response()->json([
+            'message' => 'fetch video details Successfully',
+            'data' => $data,
+            'response' => 200,
+            'success' => true,
         ], 200);
 
     } catch (\Exception $e) {
