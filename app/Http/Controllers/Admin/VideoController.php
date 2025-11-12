@@ -251,82 +251,83 @@ public function edit($id)
 
 
 
-/*public function update(Request $request, $id)
-{
-    $video = Video::with('files')->findOrFail($id);
 
-    $request->validate([
-        'title' => 'required|string|max:255',
-        'description' => 'nullable|string',
-        'category_id' => 'required|exists:categories,id',
-        'subcategory' => 'nullable|string|max:100',
-        'status' => 'required|string',
-        'thumbnail' => 'nullable|string', // presigned S3 URL
-        'videos' => 'nullable|json',
-        'delete_files' => 'nullable|array',
-        'existing_files' => 'nullable|array',
-    ]);
+// public function update(Request $request, $id)
+// {
+//     $video = Video::with('files')->findOrFail($id);
 
-    try {
-        // ✅ Update main video info
-        $video->update([
-            'title' => $request->title,
-            'description' => $request->description,
-            'category_id' => $request->category_id,
-            'subcategory' => $request->subcategory,
-            'status' => $request->status,
-            'thumbnail' => $request->thumbnail ?: $video->thumbnail,
-        ]);
+//     $request->validate([
+//         'title' => 'required|string|max:255',
+//         'description' => 'nullable|string',
+//         'category_id' => 'required|exists:categories,id',
+//         'subcategory_id' => 'nullable|exists:subcategories,id', // ✅ updated
+//         'status' => 'required|string',
+//         'thumbnail' => 'nullable|string', // presigned S3 URL
+//         'videos' => 'nullable|json',
+//         'delete_files' => 'nullable|array',
+//         'existing_files' => 'nullable|array',
+//     ]);
 
-        // ✅ Delete marked files
-        if ($request->filled('delete_files')) {
-            $video->files()->whereIn('id', $request->delete_files)->delete();
-        }
+//     try {
+//         // ✅ Update main video info
+//         $video->update([
+//             'title' => $request->title,
+//             'description' => $request->description,
+//             'category_id' => $request->category_id,
+//             'subcategory_id' => $request->subcategory_id, // ✅ updated
+//             'status' => $request->status,
+//             'thumbnail' => $request->thumbnail ?: $video->thumbnail,
+//         ]);
 
-        // ✅ Update existing files (now includes season)
-        if ($request->has('existing_files')) {
-            foreach ($request->existing_files as $fileData) {
-                if (isset($fileData['id'])) {
-                    $file = $video->files()->find($fileData['id']);
-                    if ($file) {
-                        $file->update([
-                            'season' => $fileData['season'] ?? $file->season,
-                            'variant' => $fileData['variant'] ?? $file->variant,
-                            'duration' => $fileData['duration'] ?? $file->duration,
-                            'drm' => $fileData['drm'] ?? $file->drm,
-                        ]);
-                    }
-                }
-            }
-        }
+//         // ✅ Delete marked files
+//         if ($request->filled('delete_files')) {
+//             $video->files()->whereIn('id', $request->delete_files)->delete();
+//         }
 
-        // ✅ Handle new uploaded videos (from S3)
-        if ($request->filled('videos')) {
-            $newVideos = json_decode($request->videos, true);
-            foreach ($newVideos as $file) {
-                $video->files()->create([
-                    'season' => $file['season'] ?? null,
-                    'variant' => $file['variant'] ?? 'Default',
-                    'file_url' => $file['file_url'],
-                    'manifest_url' => null,
-                    'drm' => $file['drm'] ?? false,
-                    'duration' => $file['duration'] ?? null,
-                    'meta' => [
-                        'original_name' => $file['original_name'] ?? null,
-                        'size' => $file['size'] ?? null,
-                        'mime' => $file['mime'] ?? null,
-                    ],
-                ]);
-            }
-        }
+//         // ✅ Update existing files (season, variant, duration, drm)
+//         if ($request->has('existing_files')) {
+//             foreach ($request->existing_files as $fileData) {
+//                 if (isset($fileData['id'])) {
+//                     $file = $video->files()->find($fileData['id']);
+//                     if ($file) {
+//                         $file->update([
+//                             'season' => $fileData['season'] ?? $file->season,
+//                             'variant' => $fileData['variant'] ?? $file->variant,
+//                             'duration' => $fileData['duration'] ?? $file->duration,
+//                             'drm' => $fileData['drm'] ?? $file->drm,
+//                         ]);
+//                     }
+//                 }
+//             }
+//         }
 
-        return redirect()->route('admin.videos.edit', $video->id)
-            ->with('success', '✅ Video updated successfully!');
-    } catch (\Exception $e) {
-        \Log::error('Video update failed: ' . $e->getMessage());
-        return back()->with('error', 'Failed to update video: ' . $e->getMessage());
-    }
-}*/
+//         // ✅ Handle new uploaded videos (from S3)
+//         if ($request->filled('videos')) {
+//             $newVideos = json_decode($request->videos, true);
+//             foreach ($newVideos as $file) {
+//                 $video->files()->create([
+//                     'season' => $file['season'] ?? null,
+//                     'variant' => $file['variant'] ?? 'Default',
+//                     'file_url' => $file['file_url'],
+//                     'manifest_url' => null,
+//                     'drm' => $file['drm'] ?? false,
+//                     'duration' => $file['duration'] ?? null,
+//                     'meta' => json_encode([
+//                         'original_name' => $file['original_name'] ?? null,
+//                         'size' => $file['size'] ?? null,
+//                         'mime' => $file['mime'] ?? null,
+//                     ]),
+//                 ]);
+//             }
+//         }
+
+//         return redirect()->route('admin.videos.edit', $video->id)
+//             ->with('success', '✅ Video updated successfully!');
+//     } catch (\Exception $e) {
+//         \Log::error('Video update failed: ' . $e->getMessage());
+//         return back()->with('error', 'Failed to update video: ' . $e->getMessage());
+//     }
+// }
 
 public function update(Request $request, $id)
 {
@@ -336,7 +337,7 @@ public function update(Request $request, $id)
         'title' => 'required|string|max:255',
         'description' => 'nullable|string',
         'category_id' => 'required|exists:categories,id',
-        'subcategory_id' => 'nullable|exists:subcategories,id', // ✅ updated
+        'subcategory_id' => 'nullable|exists:subcategories,id',
         'status' => 'required|string',
         'thumbnail' => 'nullable|string', // presigned S3 URL
         'videos' => 'nullable|json',
@@ -345,39 +346,54 @@ public function update(Request $request, $id)
     ]);
 
     try {
-        // ✅ Update main video info
+        // Update main video info
         $video->update([
             'title' => $request->title,
             'description' => $request->description,
             'category_id' => $request->category_id,
-            'subcategory_id' => $request->subcategory_id, // ✅ updated
+            'subcategory_id' => $request->subcategory_id,
             'status' => $request->status,
             'thumbnail' => $request->thumbnail ?: $video->thumbnail,
         ]);
 
-        // ✅ Delete marked files
+        // Delete marked files
         if ($request->filled('delete_files')) {
             $video->files()->whereIn('id', $request->delete_files)->delete();
         }
 
-        // ✅ Update existing files (season, variant, duration, drm)
+        // Update existing files (season, variant, duration, drm, image)
         if ($request->has('existing_files')) {
             foreach ($request->existing_files as $fileData) {
                 if (isset($fileData['id'])) {
                     $file = $video->files()->find($fileData['id']);
                     if ($file) {
-                        $file->update([
+                        $updateData = [
                             'season' => $fileData['season'] ?? $file->season,
                             'variant' => $fileData['variant'] ?? $file->variant,
                             'duration' => $fileData['duration'] ?? $file->duration,
                             'drm' => $fileData['drm'] ?? $file->drm,
-                        ]);
+                        ];
+
+                        // Handle episode image upload
+                        if (!empty($fileData['image_file']) && $fileData['image_file'] instanceof \Illuminate\Http\UploadedFile) {
+                            $imageFile = $fileData['image_file'];
+                            $imageName = uniqid() . '-' . $imageFile->getClientOriginalName();
+                            $path = 'video_images/' . $imageName;
+
+                            // Store image in S3 and make it publicly accessible
+                            Storage::disk('s3')->put($path, file_get_contents($imageFile), 'public');
+
+                            // Save the S3 URL in DB
+                            $updateData['image'] = Storage::disk('s3')->url($path);
+                        }
+
+                        $file->update($updateData);
                     }
                 }
             }
         }
 
-        // ✅ Handle new uploaded videos (from S3)
+        // Add newly uploaded videos from S3
         if ($request->filled('videos')) {
             $newVideos = json_decode($request->videos, true);
             foreach ($newVideos as $file) {
@@ -385,6 +401,7 @@ public function update(Request $request, $id)
                     'season' => $file['season'] ?? null,
                     'variant' => $file['variant'] ?? 'Default',
                     'file_url' => $file['file_url'],
+                    'image' => $file['image'] ?? null,
                     'manifest_url' => null,
                     'drm' => $file['drm'] ?? false,
                     'duration' => $file['duration'] ?? null,
@@ -398,12 +415,15 @@ public function update(Request $request, $id)
         }
 
         return redirect()->route('admin.videos.edit', $video->id)
-            ->with('success', '✅ Video updated successfully!');
+            ->with('success', '✅ Video and images updated successfully!');
     } catch (\Exception $e) {
         \Log::error('Video update failed: ' . $e->getMessage());
         return back()->with('error', 'Failed to update video: ' . $e->getMessage());
     }
 }
+
+
+
 
 
 

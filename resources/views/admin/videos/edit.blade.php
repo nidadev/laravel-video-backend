@@ -7,7 +7,7 @@
 
   <div class="card shadow-sm">
     <div class="card-body">
-      <form method="POST" action="{{ route('admin.videos.update', $video->id) }}" id="editVideoForm">
+      <form method="POST" action="{{ route('admin.videos.update', $video->id) }}" id="editVideoForm" enctype="multipart/form-data">
         @csrf
 
         <!-- Title -->
@@ -35,6 +35,7 @@
           </select>
         </div>
 
+        <!-- Subcategory -->
         <div class="mb-3">
           <label class="form-label">Subcategory</label>
           <select name="subcategory_id" class="form-select" id="subcategory-select">
@@ -86,7 +87,7 @@
                   @if($file->image)
                     <img src="{{ $file->image }}" alt="Episode Image" class="img-fluid rounded mb-2" width="120">
                   @endif
-                  <input type="file" name="existing_files[{{ $file->id }}][image_file]" class="form-control" accept="image/*">
+                  <input type="file" name="existing_files[{{ $file->id }}][image_file]" class="form-control episode-image-input" data-file-id="{{ $file->id }}" accept="image/*">
                   <input type="hidden" name="existing_files[{{ $file->id }}][image]" value="{{ $file->image }}">
                 </div>
                 <div class="col-md-2">
@@ -207,6 +208,42 @@
     document.getElementById('thumbnail-preview').src = data.file_url;
     document.getElementById('thumbnail-preview').style.display = 'block';
     alert('✅ Thumbnail uploaded successfully!');
+  });
+
+  // ✅ Upload Episode Images to S3 and update hidden input
+  document.querySelectorAll('.episode-image-input').forEach(input => {
+    input.addEventListener('change', async e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const fileId = e.target.dataset.fileId;
+
+      const presignRes = await fetch('{{ route('admin.videos.presigned.url') }}', {
+        method: 'POST',
+        headers: {
+          'X-CSRF-TOKEN': '{{ csrf_token() }}',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          filename: file.name,
+          content_type: file.type,
+          type: 'thumbnail' // uploads to thumbnails folder
+        })
+      });
+
+      const presignData = await presignRes.json();
+      if (!presignData.url) return alert('Failed to get presigned URL for image');
+
+      await fetch(presignData.url, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type },
+        body: file
+      });
+
+      const hiddenInput = document.querySelector(`[name="existing_files[${fileId}][image]"]`);
+      hiddenInput.value = presignData.file_url;
+
+      alert('✅ Episode image uploaded to S3!');
+    });
   });
 </script>
 @endpush
