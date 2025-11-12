@@ -334,93 +334,79 @@ public function update(Request $request, $id)
     $video = Video::with('files')->findOrFail($id);
 
     $request->validate([
-        'title' => 'required|string|max:255',
-        'description' => 'nullable|string',
-        'category_id' => 'required|exists:categories,id',
-        'subcategory_id' => 'nullable|exists:subcategories,id',
-        'status' => 'required|string',
-        'thumbnail' => 'nullable|string', // presigned S3 URL
-        'videos' => 'nullable|json',
-        'delete_files' => 'nullable|array',
-        'existing_files' => 'nullable|array',
+        'title'=>'required|string|max:255',
+        'description'=>'nullable|string',
+        'category_id'=>'required|exists:categories,id',
+        'subcategory_id'=>'nullable|exists:subcategories,id',
+        'status'=>'nullable|string',
+        'thumbnail'=>'nullable|string',
+        'existing_files'=>'nullable|array',
+        'delete_files'=>'nullable|array',
     ]);
 
     try {
-        // Update main video info
         $video->update([
-            'title' => $request->title,
-            'description' => $request->description,
-            'category_id' => $request->category_id,
-            'subcategory_id' => $request->subcategory_id,
-            'status' => $request->status,
-            'thumbnail' => $request->thumbnail ?: $video->thumbnail,
+            'title'=>$request->title,
+            'description'=>$request->description,
+            'category_id'=>$request->category_id,
+            'subcategory_id'=>$request->subcategory_id,
+            'status'=>$request->status ?? 'ready',
+            'thumbnail'=>$request->thumbnail ?? $video->thumbnail,
         ]);
 
-        // Delete marked files
-        if ($request->filled('delete_files')) {
-            $video->files()->whereIn('id', $request->delete_files)->delete();
+        // Delete removed files
+        if($request->filled('delete_files')){
+            $video->files()->whereIn('id',$request->delete_files)->delete();
         }
 
-        // Update existing files (season, variant, duration, drm, image)
-        if ($request->has('existing_files')) {
-            foreach ($request->existing_files as $fileData) {
-                if (isset($fileData['id'])) {
-                    $file = $video->files()->find($fileData['id']);
-                    if ($file) {
-                        $updateData = [
-                            'season' => $fileData['season'] ?? $file->season,
-                            'variant' => $fileData['variant'] ?? $file->variant,
-                            'duration' => $fileData['duration'] ?? $file->duration,
-                            'drm' => $fileData['drm'] ?? $file->drm,
-                        ];
+        // Update existing files
+        if($request->filled('existing_files')){
+            foreach($request->existing_files as $fileData){
+                if(!isset($fileData['id'])) continue;
+                $file = $video->files()->find($fileData['id']); if(!$file) continue;
 
-                        // Handle episode image upload
-                        if (!empty($fileData['image_file']) && $fileData['image_file'] instanceof \Illuminate\Http\UploadedFile) {
-                            $imageFile = $fileData['image_file'];
-                            $imageName = uniqid() . '-' . $imageFile->getClientOriginalName();
-                            $path = 'video_images/' . $imageName;
-
-                            // Store image in S3 and make it publicly accessible
-                            Storage::disk('s3')->put($path, file_get_contents($imageFile), 'public');
-
-                            // Save the S3 URL in DB
-                            $updateData['image'] = Storage::disk('s3')->url($path);
-                        }
-
-                        $file->update($updateData);
-                    }
-                }
-            }
-        }
-
-        // Add newly uploaded videos from S3
-        if ($request->filled('videos')) {
-            $newVideos = json_decode($request->videos, true);
-            foreach ($newVideos as $file) {
-                $video->files()->create([
-                    'season' => $file['season'] ?? null,
-                    'variant' => $file['variant'] ?? 'Default',
-                    'file_url' => $file['file_url'],
-                    'image' => $file['image'] ?? null,
-                    'manifest_url' => null,
-                    'drm' => $file['drm'] ?? false,
-                    'duration' => $file['duration'] ?? null,
-                    'meta' => json_encode([
-                        'original_name' => $file['original_name'] ?? null,
-                        'size' => $file['size'] ?? null,
-                        'mime' => $file['mime'] ?? null,
-                    ]),
+                $file->update([
+                    'variant'=>$fileData['variant'] ?? $file->variant,
+                    'season'=>$fileData['season'] ?? $file->season,
+                    'duration'=>$fileData['duration'] ?? $file->duration,
+                    'drm'=>$fileData['drm'] ?? $file->drm,
+                    'image'=>$fileData['image'] ?? $file->image,
+                    'file_url'=>$fileData['file_url'] ?? $file->file_url,
                 ]);
             }
         }
 
-        return redirect()->route('admin.videos.edit', $video->id)
-            ->with('success', '✅ Video and images updated successfully!');
-    } catch (\Exception $e) {
-        \Log::error('Video update failed: ' . $e->getMessage());
-        return back()->with('error', 'Failed to update video: ' . $e->getMessage());
+        // New video files
+        if($request->has('new_videos')){
+            foreach($request->file('new_videos') as $idx => $file){
+                $path = 'videos/'.uniqid().'-'.$file->getClientOriginalName();
+                Storage::disk('s3')->put($path, file_get_contents($file), ['ACL'=>'public-read']);
+                $imageUrl = null;
+                if($request->hasFile('new_images') && isset($request->file('new_images')[$idx])){
+                    $img = $request->file('new_images')[$idx];
+                    $imgPath = 'thumbnails/'.uniqid().'-'.$img->getClientOriginalName();
+                    Storage::disk('s3')->put($imgPath, file_get_contents($img), ['ACL'=>'public-read']);
+                    $imageUrl = Storage::disk('s3')->url($imgPath);
+                }
+
+                $video->files()->create([
+                    'variant'=>$request->new_variants[$idx] ?? 'Default',
+                    'season'=>$request->new_seasons[$idx] ?? null,
+                    'file_url'=>Storage::disk('s3')->url($path),
+                    'image'=>$imageUrl,
+                    'drm'=>$request->new_drms[$idx] ?? 0,
+                    'duration'=>$request->new_durations[$idx] ?? null,
+                ]);
+            }
+        }
+
+        return response()->json(['success'=>true,'message'=>'Video updated successfully!']);
+    } catch(\Exception $e){
+        \Log::error($e->getMessage());
+        return response()->json(['success'=>false,'error'=>$e->getMessage()]);
     }
 }
+
 
 
 
