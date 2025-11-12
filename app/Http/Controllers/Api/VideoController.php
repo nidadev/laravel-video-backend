@@ -508,17 +508,22 @@ public function dashboard()
     ->inRandomOrder()
     ->first(['id', 'title', 'thumbnail']);
 
+    // 3. Trending List with video files
+    $trending = Video::where('is_trending', true)
+        ->with(['files' => function($query) {
+            $query->select('id', 'video_id', 'variant', 'file_url', 'manifest_url', 'image', 'duration');
+        }])
+        ->orderBy('created_at', 'desc')
+        ->get(['id', 'title', 'thumbnail', 'category_id', 'subcategory_id']);
 
-    // 3. Trending List
-    $trending = TrendingVideo::where('is_active', true)
-                    ->orderBy('created_at', 'desc')
-                    ->get(['id', 'title', 'thumbnail', 'video_url']);
-
-    // 4. Most Watched List
+    // 4. Most Watched List with video files
     $mostWatched = Video::withCount('views')
-                    ->orderBy('views_count', 'desc')
-                    ->take(5)
-                    ->get(['id', 'title', 'thumbnail', 'category_id', 'subcategory_id']);
+        ->with(['files' => function($query) {
+            $query->select('id', 'video_id', 'variant', 'file_url', 'manifest_url', 'image', 'duration');
+        }])
+        ->orderBy('views_count', 'desc')
+        ->take(5)
+        ->get(['id', 'title', 'thumbnail', 'category_id', 'subcategory_id']);
 
     return response()->json([
         'success' => true,
@@ -530,6 +535,9 @@ public function dashboard()
         ]
     ]);
 }
+
+
+
 
 
 
