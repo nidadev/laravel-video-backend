@@ -496,45 +496,78 @@ public function trendingAndMostWatched(Request $request)
     }
 }
 
-public function dashboard()
+public function dashboard(Request $request)
 {
-    // 1. Category List
-    $categories = Category::all(['id', 'name', 'slug']);
+    $categoryId = $request->category_id;
+    $subcategoryId = $request->subcategory_id;
 
-    // 2. Video Banner Object (Random Series)
+    /* =====================================================
+       1. RANDOM BANNER VIDEO
+    ===================================================== */
     $bannerVideo = Video::with(['files' => function($query) {
         $query->select('id', 'video_id', 'variant', 'file_url', 'manifest_url', 'image', 'duration');
     }])
     ->inRandomOrder()
     ->first(['id', 'title', 'thumbnail']);
 
-    // 3. Trending List with video files
-    $trending = Video::where('is_trending', true)
+
+    /* =====================================================
+       2. TRENDING LIST (with filters + pagination)
+    ===================================================== */
+    $trendingQuery = Video::where('is_trending', true)
         ->with(['files' => function($query) {
             $query->select('id', 'video_id', 'variant', 'file_url', 'manifest_url', 'image', 'duration');
         }])
-        ->orderBy('created_at', 'desc')
-        ->get(['id', 'title', 'thumbnail', 'category_id', 'subcategory_id']);
+        ->orderBy('created_at', 'desc');
 
-    // 4. Most Watched List with video files
-    $mostWatched = Video::withCount('views')
+    if ($categoryId) {
+        $trendingQuery->where('category_id', $categoryId);
+    }
+
+    if ($subcategoryId) {
+        $trendingQuery->where('subcategory_id', $subcategoryId);
+    }
+
+    $trending = $trendingQuery->paginate(10, [
+        'id', 'title', 'thumbnail', 'category_id', 'subcategory_id'
+    ]);
+
+
+    /* =====================================================
+       3. MOST WATCHED LIST (with filters + pagination)
+    ===================================================== */
+    $mostWatchedQuery = Video::withCount('views')
         ->with(['files' => function($query) {
             $query->select('id', 'video_id', 'variant', 'file_url', 'manifest_url', 'image', 'duration');
         }])
-        ->orderBy('views_count', 'desc')
-        ->take(5)
-        ->get(['id', 'title', 'thumbnail', 'category_id', 'subcategory_id']);
+        ->orderBy('views_count', 'desc');
 
+    if ($categoryId) {
+        $mostWatchedQuery->where('category_id', $categoryId);
+    }
+
+    if ($subcategoryId) {
+        $mostWatchedQuery->where('subcategory_id', $subcategoryId);
+    }
+
+    $mostWatched = $mostWatchedQuery->paginate(10, [
+        'id', 'title', 'thumbnail', 'category_id', 'subcategory_id'
+    ]);
+
+
+    /* =====================================================
+       4. FINAL RESPONSE WITHOUT CATEGORIES
+    ===================================================== */
     return response()->json([
         'success' => true,
         'data' => [
-            'categories' => $categories,
             'banner_video' => $bannerVideo,
             'trending' => $trending,
             'most_watched' => $mostWatched,
         ]
     ]);
 }
+
 
 
 
