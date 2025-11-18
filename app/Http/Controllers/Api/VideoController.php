@@ -571,6 +571,90 @@ public function dashboard(Request $request)
 
 
 
+public function search(Request $request)
+{
+    $request->validate([
+        'keyword' => 'required|string|min:2',
+        'category_id' => 'nullable|exists:categories,id',
+        'subcategory_id' => 'nullable|exists:subcategories,id',
+    ]);
+
+    $keyword = $request->keyword;
+    $categoryId = $request->category_id;
+    $subcategoryId = $request->subcategory_id;
+
+    /* =====================================================
+       BASE QUERY (keyword + filters)
+    ===================================================== */
+    $baseQuery = Video::with(['files' => function($q) {
+            $q->select('id', 'video_id', 'variant', 'file_url', 'manifest_url', 'image', 'duration');
+        }])
+        ->where(function ($q) use ($keyword) {
+            $q->where('title', 'LIKE', "%{$keyword}%")
+              ->orWhere('description', 'LIKE', "%{$keyword}%");
+        });
+
+    if ($categoryId) {
+        $baseQuery->where('category_id', $categoryId);
+    }
+    if ($subcategoryId) {
+        $baseQuery->where('subcategory_id', $subcategoryId);
+    }
+
+    /* =====================================================
+       TOP RESULT
+    ===================================================== */
+    $topResult = (clone $baseQuery)
+        ->orderBy('created_at', 'desc')
+        ->first(['id', 'title', 'thumbnail', 'category_id', 'subcategory_id']);
+
+    /* =====================================================
+       NORMAL SEARCH RESULTS (PAGINATED)
+    ===================================================== */
+    $videos = (clone $baseQuery)
+        ->paginate(10, [
+            'id', 'title', 'thumbnail', 'category_id', 'subcategory_id'
+        ]);
+
+    /* =====================================================
+       MOST WATCHED LIST (PAGINATED)
+    ===================================================== */
+    $mostWatched = (clone $baseQuery)
+        ->withCount('views')
+        ->orderBy('views_count', 'desc')
+        ->paginate(10, [
+            'id', 'title', 'thumbnail', 'category_id', 'subcategory_id'
+        ]);
+
+    /* =====================================================
+       FINAL RESPONSE (YOUR REQUIRED FORMAT)
+    ===================================================== */
+    return response()->json([
+        'message' => 'Videos fetched successfully',
+        'data' => [
+            'top_result' => $topResult,
+
+            // results matching keyword
+            'videos' => $videos->items(),
+            'current_page' => $videos->currentPage(),
+            'per_page' => $videos->perPage(),
+            'total' => $videos->total(),
+            'last_page' => $videos->lastPage(),
+
+            // MOST WATCHED SECTION
+            'most_watched' => [
+                'videos' => $mostWatched->items(),
+                'current_page' => $mostWatched->currentPage(),
+                'per_page' => $mostWatched->perPage(),
+                'total' => $mostWatched->total(),
+                'last_page' => $mostWatched->lastPage(),
+            ],
+        ],
+        'response' => 200,
+        'success' => true,
+    ], 200);
+}
+
 
 
 
