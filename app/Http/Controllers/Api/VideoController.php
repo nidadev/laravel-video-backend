@@ -512,7 +512,7 @@ public function dashboard(Request $request)
 
 
     /* =====================================================
-       2. TRENDING LIST (with filters + pagination)
+       2. TRENDING LIST (NO PAGINATION)
     ===================================================== */
     $trendingQuery = Video::where('is_trending', true)
         ->with(['files' => function($query) {
@@ -528,13 +528,13 @@ public function dashboard(Request $request)
         $trendingQuery->where('subcategory_id', $subcategoryId);
     }
 
-    $trending = $trendingQuery->paginate(10, [
+    $trending = $trendingQuery->get([
         'id', 'title', 'thumbnail', 'category_id', 'subcategory_id'
     ]);
 
 
     /* =====================================================
-       3. MOST WATCHED LIST (with filters + pagination)
+       3. MOST WATCHED LIST (NO PAGINATION)
     ===================================================== */
     $mostWatchedQuery = Video::withCount('views')
         ->with(['files' => function($query) {
@@ -550,23 +550,26 @@ public function dashboard(Request $request)
         $mostWatchedQuery->where('subcategory_id', $subcategoryId);
     }
 
-    $mostWatched = $mostWatchedQuery->paginate(10, [
+    $mostWatched = $mostWatchedQuery->get([
         'id', 'title', 'thumbnail', 'category_id', 'subcategory_id'
     ]);
 
 
     /* =====================================================
-       4. FINAL RESPONSE WITHOUT CATEGORIES
+       FINAL RESPONSE (REQUESTED FORMAT)
     ===================================================== */
     return response()->json([
-        'success' => true,
+        'message' => 'Videos fetched successfully',
         'data' => [
             'banner_video' => $bannerVideo,
             'trending' => $trending,
             'most_watched' => $mostWatched,
-        ]
-    ]);
+        ],
+        'response' => 200,
+        'success' => true,
+    ], 200);
 }
+
 
 
 
