@@ -538,7 +538,7 @@ public function dashboard(Request $request)
     ===================================================== */
     $mostWatchedQuery = Video::withCount('views')
         ->with(['files' => function($query) {
-            $query->select('id', 'video_id', 'variant','season', 'file_url', 'manifest_url', 'image', 'duration');
+            $query->select('id', 'video_id', 'variant','season_id', 'file_url', 'manifest_url', 'image', 'duration');
         }])
         ->orderBy('views_count', 'desc');
 
