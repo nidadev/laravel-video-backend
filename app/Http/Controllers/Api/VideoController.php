@@ -505,7 +505,7 @@ public function dashboard(Request $request)
        1. RANDOM BANNER VIDEO
     ===================================================== */
     $bannerVideo = Video::with(['files' => function($query) {
-        $query->select('id', 'video_id', 'variant', 'file_url','season', 'manifest_url', 'image', 'duration');
+        $query->select('id', 'video_id', 'variant', 'file_url','season_id', 'manifest_url', 'image', 'duration');
     }])
     ->inRandomOrder()
     ->first(['id', 'title', 'thumbnail','description']);
@@ -516,7 +516,7 @@ public function dashboard(Request $request)
     ===================================================== */
     $trendingQuery = Video::where('is_trending', true)
         ->with(['files' => function($query) {
-            $query->select('id', 'video_id', 'variant','season', 'file_url', 'manifest_url', 'image', 'duration');
+            $query->select('id', 'video_id', 'variant','season_id', 'file_url', 'manifest_url', 'image', 'duration');
         }])
         ->orderBy('created_at', 'desc');
 
