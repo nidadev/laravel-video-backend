@@ -266,32 +266,41 @@ public function destroy($id)
         ]);
     }
 
-  public function show(Request $request, $id)
+public function show(Request $request, $id)
 {
     try {
         $video = Video::with('files')->findOrFail($id);
         $user = $request->user();
 
+        // Check ads
         $ads_enabled = true;
-
         if ($user && method_exists($user, 'hasActiveSubscription') && $user->hasActiveSubscription()) {
             $ads_enabled = false;
         }
 
+        // Filter by season_id if provided
+        $seasonId = $request->query('season_id'); // GET parameter ?season_id=2
+        $episodes = $video->files;
+        if ($seasonId) {
+            $episodes = $episodes->where('season_id', $seasonId);
+        }
+
+        // Format response
         $data = [
             'video_title' => $video->title,
             'ads_enabled' => $ads_enabled,
-            'episodes' => $video->files->map(function ($file) {
+            'episodes' => $episodes->map(function ($file) {
                 return [
                     'episode_id' => $file->id,
                     'title' => $file->variant,
+                    'season_id' => $file->season_id,
                     'url' => $file->file_url,
                 ];
             }),
         ];
 
         return response()->json([
-            'message' => 'fetch video details Successfully',
+            'message' => 'Fetch video details successfully',
             'data' => $data,
             'response' => 200,
             'success' => true,
@@ -308,6 +317,7 @@ public function destroy($id)
         ], 500);
     }
 }
+
 
 public function fetchByCategory(Request $request)
 {
