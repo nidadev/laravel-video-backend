@@ -8,7 +8,7 @@ use App\Models\Video;
 class VideoFile extends Model
 {
     //
-    protected $fillable = ['video_id', 'variant', 'manifest_url', 'file_url','image', 'drm', 'duration','meta','season'];
+    protected $fillable = ['video_id', 'variant', 'manifest_url', 'file_url','image', 'drm', 'duration','meta','season_id'];
 
     protected $casts = [
         'meta' => 'array',
@@ -20,5 +20,9 @@ class VideoFile extends Model
     public function video()
     {
         return $this->belongsTo(Video::class);
+    }
+     public function season()
+    {
+        return $this->belongsTo(Season::class);
     }
 }
