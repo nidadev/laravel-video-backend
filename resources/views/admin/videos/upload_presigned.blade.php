@@ -62,10 +62,16 @@
             <label>Variant / Label</label>
             <input type="text" class="form-control variant" placeholder="Episode 1 / 720p">
           </div>
-          <div class="col-md-2">
-            <label>Season</label>
-            <input type="text" class="form-control season" placeholder="1 / Season 1 / S01">
-          </div>
+         <div class="col-md-2">
+    <label>Season</label>
+    <select class="form-select season">
+        <option value="">Select Season</option>
+        @foreach($seasons as $s)
+            <option value="{{ $s->id }}">{{ $s->name }}</option>
+        @endforeach
+    </select>
+</div>
+
           <div class="col-md-2">
             <label>Duration</label>
             <input type="text" class="form-control duration" placeholder="3600 or 01:00:00">
