@@ -17,6 +17,11 @@
       <label>Description</label>
       <textarea name="description" class="form-control" rows="3">{{ $video->description }}</textarea>
     </div>
+<div class="mb-3">
+  <label>Year of Published</label>
+  <input type="number" name="year_of_published" class="form-control"
+         value="{{ $video->year_of_published }}" min="1900" max="2099">
+</div>
 
     <div class="mb-3">
       <label>Category</label>
@@ -255,6 +260,7 @@ $(document).ready(function() {
     // NEW video files
     $('.video-file-item').each(function(){
       const fileInput = $(this).find('.video-file')[0];
+      const year_of_published = $('[name="year_of_published"]').val();
 
       if(fileInput && fileInput.files[0]){
         formData.append('new_videos[]', fileInput.files[0]);
@@ -262,6 +268,8 @@ $(document).ready(function() {
         formData.append('new_seasons[]', $(this).find('.season-select').val());
         formData.append('new_durations[]', $(this).find('.duration').val());
         formData.append('new_drms[]', $(this).find('.drm').val());
+        formData.append('year_of_published', year_of_published);
+
 
         const img = $(this).find('.image-file')[0];
         if(img && img.files[0]) formData.append('new_images[]', img.files[0]);
