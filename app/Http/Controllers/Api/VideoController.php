@@ -518,7 +518,7 @@ public function dashboard(Request $request)
         $query->select('id', 'video_id', 'variant', 'file_url','season_id', 'manifest_url', 'image', 'duration');
     }])
     ->inRandomOrder()
-    ->first(['id', 'title', 'thumbnail','description']);
+    ->first(['id', 'title', 'thumbnail','description','year_of_published']);
 
 
     /* =====================================================
@@ -539,7 +539,7 @@ public function dashboard(Request $request)
     }
 
     $trending = $trendingQuery->get([
-        'id', 'title', 'thumbnail', 'description','category_id', 'subcategory_id'
+        'id', 'title', 'thumbnail', 'description','year_of_published','category_id', 'subcategory_id'
     ]);
 
 
@@ -561,7 +561,7 @@ public function dashboard(Request $request)
     }
 
     $mostWatched = $mostWatchedQuery->get([
-        'id', 'title', 'thumbnail','description', 'category_id', 'subcategory_id'
+        'id', 'title', 'thumbnail','description','year_of_published', 'category_id', 'subcategory_id'
     ]);
 
 

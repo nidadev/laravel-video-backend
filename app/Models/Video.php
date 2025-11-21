@@ -16,7 +16,7 @@ class Video extends Model
 {
     //
     protected $fillable = ['title','description','created_by',
-    'status','duration','thumbnail','category_id','subcategory_id','is_trending'];
+    'status','duration','thumbnail','category_id','subcategory_id','is_trending','year_of_published'];
 
     public function files(): HasMany
 {

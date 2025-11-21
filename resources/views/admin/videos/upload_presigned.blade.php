@@ -15,7 +15,10 @@
       <label>Description</label>
       <textarea name="description" class="form-control" rows="3"></textarea>
     </div>
-
+<div class="mb-3">
+    <label>Year of Published</label>
+    <input type="number" name="year_of_published" class="form-control" placeholder="2024" min="1900" max="2100">
+</div>
     <div class="mb-3">
       <label>Category</label>
       <select name="category_id" class="form-select" id="category-select" required>
@@ -142,6 +145,8 @@ $('#presignedUploadForm').on('submit', async function(e){
   const subcategory_id = $('[name="subcategory_id"]').val();
   const thumbnail = $('#thumbnailFile')[0].files[0];
   const videoItems = $('.video-file-item');
+  const year_of_published = $('[name="year_of_published"]').val();
+
   if(!videoItems.length){ alert('Add at least one video'); return; }
 
   const uploadedVideos = [];
@@ -214,7 +219,7 @@ $('#presignedUploadForm').on('submit', async function(e){
   const storeRes = await fetch(`{{ route('admin.videos.presigned.store') }}`,{
     method:'POST',
     headers:{'X-CSRF-TOKEN': $('input[name="_token"]').val(),'Content-Type':'application/json'},
-    body: JSON.stringify({title, description, category_id, subcategory_id, thumbnail:thumbnailUrl, videos:uploadedVideos})
+    body: JSON.stringify({title, description,year_of_published, category_id, subcategory_id, thumbnail:thumbnailUrl, videos:uploadedVideos})
   });
 
   const result = await storeRes.json();

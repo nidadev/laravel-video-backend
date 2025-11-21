@@ -86,6 +86,8 @@ public function update(Request $request, $id)
     $request->validate([
         'title'=>'required|string|max:255',
         'description'=>'nullable|string',
+        'year_of_published' => 'nullable|integer|min:1900|max:2099',
+
         'category_id'=>'required|exists:categories,id',
         'subcategory_id'=>'nullable|exists:subcategories,id',
         'status'=>'nullable|string',
@@ -98,6 +100,8 @@ public function update(Request $request, $id)
         $video->update([
             'title'=>$request->title,
             'description'=>$request->description,
+            'year_of_published' => $request->year_of_published,
+
             'category_id'=>$request->category_id,
             'subcategory_id'=>$request->subcategory_id,
             'status'=>$request->status ?? 'ready',
@@ -242,6 +246,8 @@ public function storePresigned(Request $request)
         'videos.*.original_name' => 'nullable|string',
         'videos.*.size' => 'nullable|numeric',
         'videos.*.mime' => 'nullable|string',
+        'year_of_published' => 'nullable|digits:4|integer|min:1900|max:2100',
+
     ]);
 
     try {
@@ -254,6 +260,8 @@ public function storePresigned(Request $request)
             'thumbnail' => $request->thumbnail,
             'status' => 'ready',
             'created_by' => auth()->id() ?? auth('admin')->id(),
+                'year_of_published' => $request->year_of_published,
+
         ]);
 
         // ✅ Save uploaded file metadata
