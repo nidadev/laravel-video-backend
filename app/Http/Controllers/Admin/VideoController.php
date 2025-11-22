@@ -94,6 +94,7 @@ public function update(Request $request, $id)
         'thumbnail'=>'nullable|string',
         'existing_files'=>'nullable|array',
         'delete_files'=>'nullable|array',
+    'season_id' => 'nullable|exists:seasons,id',
     ]);
 
     try {
@@ -101,7 +102,7 @@ public function update(Request $request, $id)
             'title'=>$request->title,
             'description'=>$request->description,
             'year_of_published' => $request->year_of_published,
-
+'season_id'=>$request->season_id,
             'category_id'=>$request->category_id,
             'subcategory_id'=>$request->subcategory_id,
             'status'=>$request->status ?? 'ready',
@@ -247,6 +248,8 @@ public function storePresigned(Request $request)
         'videos.*.size' => 'nullable|numeric',
         'videos.*.mime' => 'nullable|string',
         'year_of_published' => 'nullable|digits:4|integer|min:1900|max:2100',
+        'season_id' => 'nullable|exists:seasons,id',
+
 
     ]);
 
@@ -255,6 +258,7 @@ public function storePresigned(Request $request)
         $video = Video::create([
             'title' => $request->title,
             'description' => $request->description,
+            'season_id' => $request->season_id,  
             'category_id' => $request->category_id,
             'subcategory_id' => $request->subcategory_id,
             'thumbnail' => $request->thumbnail,

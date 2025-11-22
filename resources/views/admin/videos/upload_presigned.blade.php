@@ -41,6 +41,15 @@
           <div class="text-danger small">{{ $message }}</div>
       @enderror
     </div>
+<div class="mb-3">
+    <label>Season</label>
+    <select name="season_id" class="form-select">
+        <option value="">Select Season</option>
+        @foreach($seasons as $s)
+            <option value="{{ $s->id }}">{{ $s->name }}</option>
+        @endforeach
+    </select>
+</div>
 
     <!-- Main Thumbnail -->
     <div class="mb-3">
@@ -146,6 +155,7 @@ $('#presignedUploadForm').on('submit', async function(e){
   const thumbnail = $('#thumbnailFile')[0].files[0];
   const videoItems = $('.video-file-item');
   const year_of_published = $('[name="year_of_published"]').val();
+    const season_id = $('[name="season_id"]').val();
 
   if(!videoItems.length){ alert('Add at least one video'); return; }
 
@@ -177,6 +187,7 @@ $('#presignedUploadForm').on('submit', async function(e){
     const season = $(item).find('.season').val();
     const duration = $(item).find('.duration').val();
     const drm = $(item).find('.drm').val();
+
 
     // Video upload
     const presignVideoData = await (await fetch(`{{ route('admin.videos.presigned.url') }}`,{
@@ -211,7 +222,8 @@ $('#presignedUploadForm').on('submit', async function(e){
       image: imageUrl,
       original_name: file.name,
       size: file.size,
-      mime: file.type
+      mime: file.type,
+      
     });
   }
 
@@ -219,7 +231,7 @@ $('#presignedUploadForm').on('submit', async function(e){
   const storeRes = await fetch(`{{ route('admin.videos.presigned.store') }}`,{
     method:'POST',
     headers:{'X-CSRF-TOKEN': $('input[name="_token"]').val(),'Content-Type':'application/json'},
-    body: JSON.stringify({title, description,year_of_published, category_id, subcategory_id, thumbnail:thumbnailUrl, videos:uploadedVideos})
+    body: JSON.stringify({title, description,season_id,year_of_published, category_id, subcategory_id, thumbnail:thumbnailUrl, videos:uploadedVideos})
   });
 
   const result = await storeRes.json();
