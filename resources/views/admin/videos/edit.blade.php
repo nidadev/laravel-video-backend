@@ -39,6 +39,17 @@
         <option value="">Select Subcategory</option>
       </select>
     </div>
+<div class="mb-3">
+  <label>Season (Main Video)</label>
+  <select name="season_id" class="form-select">
+    <option value="">Select Season</option>
+    @foreach ($seasons as $s)
+      <option value="{{ $s->id }}" {{ $video->season_id == $s->id ? 'selected' : '' }}>
+          {{ $s->name }}
+      </option>
+    @endforeach
+  </select>
+</div>
 
     <!-- Main Thumbnail -->
     <div class="mb-3">
@@ -261,6 +272,8 @@ $(document).ready(function() {
     $('.video-file-item').each(function(){
       const fileInput = $(this).find('.video-file')[0];
       const year_of_published = $('[name="year_of_published"]').val();
+              const season_id = $('[name="season_id"]').val();
+
 
       if(fileInput && fileInput.files[0]){
         formData.append('new_videos[]', fileInput.files[0]);
@@ -269,6 +282,7 @@ $(document).ready(function() {
         formData.append('new_durations[]', $(this).find('.duration').val());
         formData.append('new_drms[]', $(this).find('.drm').val());
         formData.append('year_of_published', year_of_published);
+formData.append('season_id', season_id);
 
 
         const img = $(this).find('.image-file')[0];
