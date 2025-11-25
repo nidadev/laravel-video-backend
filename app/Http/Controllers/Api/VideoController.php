@@ -281,28 +281,37 @@ public function show(Request $request, $id)
         }
 
         // Filter by season_id if provided
-        $seasonId = $request->query('season_id'); // GET parameter ?season_id=2
+        $seasonId = $request->query('season_id');
         $episodes = $video->files;
+
         if ($seasonId) {
             $episodes = $episodes->where('season_id', $seasonId);
         }
 
+        // Get seasons of this video's episodes
         $seasonIds = $video->files->pluck('season_id')->unique()->filter();
 
-$seasons = Season::whereIn('id', $seasonIds)
-    ->get(['id', 'name']);
+        $seasons = Season::whereIn('id', $seasonIds)
+            ->get(['id', 'name']);
 
         // Format response
         $data = [
-            'video_title' => $video->title,
+            'video' => [
+                'title' => $video->title,
+                'description' => $video->description,
+                'thumbnail' => $video->thumbnail,
+                'year_of_published' => $video->year_of_published,
+            ],
             'ads_enabled' => $ads_enabled,
-            'seasons' => $seasons,  
+            'seasons' => $seasons,
+
             'episodes' => $episodes->map(function ($file) {
                 return [
                     'episode_id' => $file->id,
                     'title' => $file->variant,
                     'season_id' => $file->season_id,
                     'url' => $file->file_url,
+                    'thumbnail' => $file->image,   // <-- episode image added
                 ];
             }),
         ];
@@ -312,7 +321,7 @@ $seasons = Season::whereIn('id', $seasonIds)
             'data' => $data,
             'response' => 200,
             'success' => true,
-        ], 200);
+        ]);
 
     } catch (\Exception $e) {
         \Log::error('Video show error: ' . $e->getMessage());
