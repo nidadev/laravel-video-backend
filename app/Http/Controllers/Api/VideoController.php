@@ -530,7 +530,7 @@ public function seeall(Request $request)
         $cat = $request->query('cat');             // category_id
         $subcat = $request->query('subcat');       // subcategory_id
 
-        $query = Video::withCount('views') // adds views_count
+        $query = Video::withCount('views')
             ->with(['category:id,name', 'subcategory:id,name', 'files:id,video_id,season_id']);
 
         // --- Category Filter ---
@@ -556,9 +556,8 @@ public function seeall(Request $request)
         // Pagination
         $videos = $query->paginate(12); // 12 per page
 
-        // Format response
-        $formatted = $videos->through(function ($video) {
-            // Get unique season IDs from video files
+        // Format each video item
+        $videos->getCollection()->transform(function ($video) {
             $seasonIds = $video->files->pluck('season_id')->unique()->filter()->values();
 
             return [
@@ -570,30 +569,31 @@ public function seeall(Request $request)
                 'views' => $video->views_count,
                 'category' => $video->category->name ?? null,
                 'subcategory' => $video->subcategory->name ?? null,
-                'season_ids' => $seasonIds, // ✅ Added season IDs
+                'season_ids' => $seasonIds, // Added season IDs
             ];
         });
 
         return response()->json([
             'message' => 'Videos fetched successfully',
             'data' => [
-                'videos' => $formatted,
+                'videos' => $videos->items(),
                 'current_page' => $videos->currentPage(),
                 'per_page' => $videos->perPage(),
                 'total' => $videos->total(),
                 'last_page' => $videos->lastPage(),
             ],
+            'response' => 200,
             'success' => true,
-            'response' => 200
-        ]);
+        ], 200);
 
     } catch (\Exception $e) {
         \Log::error($e->getMessage());
 
         return response()->json([
             'message' => 'Failed to fetch videos',
-            'success' => false,
+            'data' => [],
             'response' => 500,
+            'success' => false,
             'error' => $e->getMessage(),
         ], 500);
     }
