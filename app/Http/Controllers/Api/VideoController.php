@@ -523,79 +523,83 @@ public function trendingAndMostWatched(Request $request)
     }
 }
 
-/*public function dashboard(Request $request)
+public function seeall(Request $request)
 {
-    $categoryId = $request->category_id;
-    $subcategoryId = $request->subcategory_id;
+    try {
+        $listType = $request->query('list_type');  // 1 = trending, else = most watched
+        $cat = $request->query('cat');             // category_id
+        $subcat = $request->query('subcat');       // subcategory_id
 
-    /* =====================================================
-       1. RANDOM BANNER VIDEO
-    ===================================================== */
-    /*$bannerVideo = Video::with(['files' => function($query) {
-        $query->select('id', 'video_id', 'variant', 'file_url','season_id', 'manifest_url', 'image', 'duration');
-    }])
-    ->inRandomOrder()
-    ->first(['id', 'title', 'thumbnail','description','year_of_published']);
+        $query = Video::withCount('views') // adds views_count
+            ->with(['category:id,name', 'subcategory:id,name', 'files:id,video_id,season_id']);
 
+        // --- Category Filter ---
+        if ($cat) {
+            $query->where('category_id', $cat);
+        }
 
-    /* =====================================================
-       2. TRENDING LIST (NO PAGINATION)
-    ===================================================== */
-    /*$trendingQuery = Video::where('is_trending', true)
-        ->with(['files' => function($query) {
-            $query->select('id', 'video_id', 'variant','season_id', 'file_url', 'manifest_url', 'image', 'duration');
-        }])
-        ->orderBy('created_at', 'desc');
+        // --- Subcategory Filter ---
+        if ($subcat) {
+            $query->where('subcategory_id', $subcat);
+        }
 
-    if ($categoryId) {
-        $trendingQuery->where('category_id', $categoryId);
+        // --- Trending Videos ---
+        if ($listType == 1) {
+            $query->where('is_trending', 1)
+                  ->orderBy('created_at', 'desc');
+        }
+        // --- Most Watched Videos ---
+        else {
+            $query->orderBy('views_count', 'desc');
+        }
+
+        // Pagination
+        $videos = $query->paginate(12); // 12 per page
+
+        // Format response
+        $formatted = $videos->through(function ($video) {
+            // Get unique season IDs from video files
+            $seasonIds = $video->files->pluck('season_id')->unique()->filter()->values();
+
+            return [
+                'id' => $video->id,
+                'title' => $video->title,
+                'description' => $video->description,
+                'thumbnail' => $video->thumbnail,
+                'year_of_published' => $video->year_of_published,
+                'views' => $video->views_count,
+                'category' => $video->category->name ?? null,
+                'subcategory' => $video->subcategory->name ?? null,
+                'season_ids' => $seasonIds, // ✅ Added season IDs
+            ];
+        });
+
+        return response()->json([
+            'message' => 'Videos fetched successfully',
+            'data' => [
+                'videos' => $formatted,
+                'current_page' => $videos->currentPage(),
+                'per_page' => $videos->perPage(),
+                'total' => $videos->total(),
+                'last_page' => $videos->lastPage(),
+            ],
+            'success' => true,
+            'response' => 200
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error($e->getMessage());
+
+        return response()->json([
+            'message' => 'Failed to fetch videos',
+            'success' => false,
+            'response' => 500,
+            'error' => $e->getMessage(),
+        ], 500);
     }
-
-    if ($subcategoryId) {
-        $trendingQuery->where('subcategory_id', $subcategoryId);
-    }
-
-    $trending = $trendingQuery->get([
-        'id', 'title', 'thumbnail', 'description','year_of_published','category_id', 'subcategory_id'
-    ]);
+}
 
 
-    /* =====================================================
-       3. MOST WATCHED LIST (NO PAGINATION)
-    ===================================================== */
-   /* $mostWatchedQuery = Video::withCount('views')
-        ->with(['files' => function($query) {
-            $query->select('id', 'video_id', 'variant','season_id', 'file_url', 'manifest_url', 'image', 'duration');
-        }])
-        ->orderBy('views_count', 'desc');
-
-    if ($categoryId) {
-        $mostWatchedQuery->where('category_id', $categoryId);
-    }
-
-    if ($subcategoryId) {
-        $mostWatchedQuery->where('subcategory_id', $subcategoryId);
-    }
-
-    $mostWatched = $mostWatchedQuery->get([
-        'id', 'title', 'thumbnail','description','year_of_published', 'category_id', 'subcategory_id'
-    ]);
-
-
-    /* =====================================================
-       FINAL RESPONSE (REQUESTED FORMAT)
-    ===================================================== */
-    /*return response()->json([
-        'message' => 'Videos fetched successfully',
-        'data' => [
-            'banner_video' => $bannerVideo,
-            'trending' => $trending,
-            'most_watched' => $mostWatched,
-        ],
-        'response' => 200,
-        'success' => true,
-    ], 200);
-}*/
 
 
 public function dashboard(Request $request)
