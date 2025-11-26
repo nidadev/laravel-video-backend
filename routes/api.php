@@ -89,6 +89,7 @@ Route::get('/trendingvideos', [TrendingVideoController::class, 'index']);
 Route::get('/videos/trendingwatched', [VideoController::class, 'trendingAndMostWatched']);
 Route::get('/dashboard', [VideoController::class, 'dashboard']);
 Route::get('/search', [VideoController::class, 'search']);
+Route::get('/videos', [VideoController::class, 'seeall']);
 
 
 
