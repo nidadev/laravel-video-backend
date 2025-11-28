@@ -526,39 +526,42 @@ public function trendingAndMostWatched(Request $request)
 public function seeall(Request $request)
 {
     try {
-        $listType = $request->query('list_type');  // 1 = trending, else = most watched
-        $cat = $request->query('cat');             // category_id
-        $subcat = $request->query('subcat');       // subcategory_id
+        // POST parameters instead of query params
+        $listType = $request->input('list_type');  
+        $cat = $request->input('cat');             
+        $subcat = $request->input('subcat');
 
         $query = Video::withCount('views')
             ->with(['category:id,name', 'subcategory:id,name', 'files:id,video_id,season_id']);
 
-        // --- Category Filter ---
+        // Category Filter
         if ($cat) {
             $query->where('category_id', $cat);
         }
 
-        // --- Subcategory Filter ---
+        // Subcategory Filter
         if ($subcat) {
             $query->where('subcategory_id', $subcat);
         }
 
-        // --- Trending Videos ---
+        // Trending Videos
         if ($listType == 1) {
             $query->where('is_trending', 1)
                   ->orderBy('created_at', 'desc');
         }
-        // --- Most Watched Videos ---
+        // Most Watched Videos
         else {
             $query->orderBy('views_count', 'desc');
         }
 
         // Pagination
-        $videos = $query->paginate(12); // 12 per page
+        $videos = $query->paginate(12);
 
-        // Format each video item
+        // FORMAT RESPONSE
         $videos->getCollection()->transform(function ($video) {
+
             $seasonIds = $video->files->pluck('season_id')->unique()->filter()->values();
+            $seasonId = $seasonIds->first(); // single season_id
 
             return [
                 'id' => $video->id,
@@ -569,7 +572,7 @@ public function seeall(Request $request)
                 'views' => $video->views_count,
                 'category' => $video->category->name ?? null,
                 'subcategory' => $video->subcategory->name ?? null,
-                'season_ids' => $seasonIds, // Added season IDs
+                'season_id' => $seasonId,
             ];
         });
 
@@ -598,6 +601,8 @@ public function seeall(Request $request)
         ], 500);
     }
 }
+
+
 
 
 
@@ -691,79 +696,103 @@ public function search(Request $request)
         'subcategory_id' => 'nullable|exists:subcategories,id',
     ]);
 
-    $keyword = $request->keyword;
+    $keyword = strtolower($request->keyword);
     $categoryId = $request->category_id;
     $subcategoryId = $request->subcategory_id;
 
-    /* =====================================================
-       BASE QUERY (keyword + filters)
-    ===================================================== */
-    $baseQuery = Video::with(['files' => function($q) {
-            $q->select('id', 'video_id', 'variant', 'file_url', 'manifest_url', 'image', 'duration');
-        }])
+    /* =============================
+        BASE QUERY + FILTERS
+    ==============================*/
+    $baseQuery = Video::with(['files', 'views'])
+        ->when($categoryId, fn($q) => $q->where('category_id', $categoryId))
+        ->when($subcategoryId, fn($q) => $q->where('subcategory_id', $subcategoryId))
         ->where(function ($q) use ($keyword) {
             $q->where('title', 'LIKE', "%{$keyword}%")
               ->orWhere('description', 'LIKE', "%{$keyword}%");
-        });
+        })
+        ->withCount('views');
 
-    if ($categoryId) {
-        $baseQuery->where('category_id', $categoryId);
-    }
-    if ($subcategoryId) {
-        $baseQuery->where('subcategory_id', $subcategoryId);
-    }
+    $videos = $baseQuery->get();
 
-    /* =====================================================
-       TOP RESULT
-    ===================================================== */
-    $topResult = (clone $baseQuery)
-        ->orderBy('created_at', 'desc')
-        ->first(['id', 'title', 'thumbnail', 'category_id', 'subcategory_id']);
+    /* ============================================
+        APPLY SEARCH SCORING ALGORITHM
+    ============================================ */
+    $videos = $videos->map(function ($video) use ($keyword) {
 
-    /* =====================================================
-       NORMAL SEARCH RESULTS (PAGINATED)
-    ===================================================== */
-    $videos = (clone $baseQuery)
-        ->paginate(10, [
-            'id', 'title', 'thumbnail', 'category_id', 'subcategory_id'
-        ]);
+        $title = strtolower($video->title);
+        $desc  = strtolower($video->description ?? "");
 
-    /* =====================================================
-       MOST WATCHED LIST (PAGINATED)
-    ===================================================== */
-    $mostWatched = (clone $baseQuery)
-        ->withCount('views')
-        ->orderBy('views_count', 'desc')
-        ->paginate(10, [
-            'id', 'title', 'thumbnail', 'category_id', 'subcategory_id'
-        ]);
+        $score = 0;
 
-    /* =====================================================
-       FINAL RESPONSE (YOUR REQUIRED FORMAT)
-    ===================================================== */
+        // Exact match in title
+        if ($title === $keyword) {
+            $score += 50;
+        }
+
+        // Partial match in title
+        if (str_contains($title, $keyword)) {
+            $score += 30;
+        }
+
+        // Match in description
+        if (str_contains($desc, $keyword)) {
+            $score += 10;
+        }
+
+        // Trending boost
+        if ($video->is_trending) {
+            $score += 20;
+        }
+
+        // Popularity boost (based on views)
+        $score += ($video->views_count / 10);
+
+        // Recency boost
+        $daysOld = now()->diffInDays($video->created_at);
+        $score += max(0, (30 - $daysOld)); // newer = higher score
+
+        $video->search_score = $score;
+
+        return $video;
+    });
+
+    // Sort by algorithm score descending
+    $sorted = $videos->sortByDesc('search_score')
+                     ->values();
+
+    // Now paginate manually
+    $perPage = 10;
+    $page = request('page', 1);
+    $pagedResults = new \Illuminate\Pagination\LengthAwarePaginator(
+        $sorted->slice(($page - 1) * $perPage, $perPage)->values(),
+        $sorted->count(),
+        $perPage,
+        $page,
+        ['path' => url()->current()]
+    );
+
+    /* =============================
+        TOP RESULT
+    ==============================*/
+    $topResult = $sorted->first();
+
+    /* =============================
+        FINAL RESPONSE
+    ==============================*/
     return response()->json([
         'message' => 'Videos fetched successfully',
         'data' => [
             'top_result' => $topResult,
 
-            // results matching keyword
-            'videos' => $videos->items(),
-            'current_page' => $videos->currentPage(),
-            'per_page' => $videos->perPage(),
-            'total' => $videos->total(),
-            'last_page' => $videos->lastPage(),
+            //'videos' => $pagedResults->items(),
+            'current_page' => $pagedResults->currentPage(),
+            'per_page' => $pagedResults->perPage(),
+            'total' => $pagedResults->total(),
+            'last_page' => $pagedResults->lastPage(),
 
-            // MOST WATCHED SECTION
-            'most_watched' => [
-                'videos' => $mostWatched->items(),
-                'current_page' => $mostWatched->currentPage(),
-                'per_page' => $mostWatched->perPage(),
-                'total' => $mostWatched->total(),
-                'last_page' => $mostWatched->lastPage(),
-            ],
         ],
         'response' => 200,
-        'success' => true,
+        'success' => true
     ], 200);
 }
 
