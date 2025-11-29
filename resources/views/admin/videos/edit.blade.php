@@ -2,305 +2,263 @@
 
 @section('content')
 <div class="container">
-  <h2 class="mb-4">✏️ Edit Video (with Episodes / Variants)</h2>
+  <div class="row justify-content-center">
+    <div class="col-md-10">
+      <h2>Edit Video (with Episodes / Variants)</h2>
 
-  <form id="presignedEditForm">
-    @csrf
-    <input type="hidden" name="video_id" value="{{ $video->id }}">
-
-    <div class="mb-3">
-      <label>Title</label>
-      <input type="text" name="title" class="form-control" value="{{ $video->title }}" required>
-    </div>
-
-    <div class="mb-3">
-      <label>Description</label>
-      <textarea name="description" class="form-control" rows="3">{{ $video->description }}</textarea>
-    </div>
-<div class="mb-3">
-  <label>Year of Published</label>
-  <input type="number" name="year_of_published" class="form-control"
-         value="{{ $video->year_of_published }}" min="1900" max="2099">
-</div>
-
-    <div class="mb-3">
-      <label>Category</label>
-      <select name="category_id" class="form-select" id="category-select" required>
-        <option value="">Select Category</option>
-        @foreach ($categories as $cat)
-            <option value="{{ $cat->id }}" {{ $video->category_id == $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
-        @endforeach
-      </select>
-    </div>
-
-    <div class="mb-3">
-      <label>Subcategory</label>
-      <select name="subcategory_id" class="form-select" id="subcategory-select">
-        <option value="">Select Subcategory</option>
-      </select>
-    </div>
-<div class="mb-3">
-  <label>Season (Main Video)</label>
-  <select name="season_id" class="form-select">
-    <option value="">Select Season</option>
-    @foreach ($seasons as $s)
-      <option value="{{ $s->id }}" {{ $video->season_id == $s->id ? 'selected' : '' }}>
-          {{ $s->name }}
-      </option>
-    @endforeach
-  </select>
-</div>
-
-    <!-- Main Thumbnail -->
-    <div class="mb-3">
-      <label>Thumbnail</label>
-      @if($video->thumbnail)
-        <div class="mb-2">
-          <img id="thumbnail-preview" src="{{ $video->thumbnail }}" width="200" class="rounded border shadow-sm">
-        </div>
-      @endif
-      <input type="file" id="thumbnailFile" class="form-control" accept="image/*">
-      <input type="hidden" name="thumbnail" id="thumbnail-url" value="{{ $video->thumbnail }}">
-      <div class="progress mt-2 d-none" id="thumbProgressWrapper">
-        <div id="thumbProgress" class="progress-bar progress-bar-striped progress-bar-animated" style="width:0%">0%</div>
-      </div>
-    </div>
-
-    <hr>
-
-    <h4>Video Files / Episodes</h4>
-    <div id="video-files-container">
-      @foreach($video->files as $file)
-      <div class="video-file-item mb-4 border p-3 rounded">
-        <input type="hidden" name="existing_files[{{ $file->id }}][id]" value="{{ $file->id }}">
-        <div class="row g-3 align-items-end">
-
-          <!-- Video File -->
-          <div class="col-md-4">
-            <label>Video File</label>
-            <video width="100%" controls class="mb-2">
-              <source src="{{ $file->file_url }}" type="video/mp4">
-            </video>
-            <input type="file" class="form-control video-file" accept="video/*">
-            <input type="hidden" name="existing_files[{{ $file->id }}][file_url]" value="{{ $file->file_url }}">
-          </div>
-
-          <!-- Variant -->
-          <div class="col-md-3">
-            <label>Variant / Label</label>
-            <input type="text" name="existing_files[{{ $file->id }}][variant]" value="{{ $file->variant }}" class="form-control variant">
-          </div>
-
-          <!-- Season ID dropdown -->
-          <div class="col-md-2">
-            <label>Season</label>
-            <select name="existing_files[{{ $file->id }}][season_id]" class="form-select season-select">
-              <option value="">Select</option>
-              @foreach($seasons as $s)
-              <option value="{{ $s->id }}" {{ $file->season_id == $s->id ? 'selected' : '' }}>
-                {{ $s->name }}
-              </option>
+      @if($errors->any())
+      <div class="alert alert-danger">
+          <ul>
+              @foreach($errors->all() as $err)
+                  <li>{{ $err }}</li>
               @endforeach
-            </select>
-          </div>
-
-          <!-- Duration -->
-          <div class="col-md-2">
-            <label>Duration</label>
-            <input type="text" name="existing_files[{{ $file->id }}][duration]" value="{{ $file->duration }}" class="form-control duration">
-          </div>
-
-          <!-- DRM -->
-          <div class="col-md-2">
-            <label>DRM?</label>
-            <select name="existing_files[{{ $file->id }}][drm]" class="form-select drm">
-              <option value="0" {{ !$file->drm ? 'selected' : '' }}>No</option>
-              <option value="1" {{ $file->drm ? 'selected' : '' }}>Yes</option>
-            </select>
-          </div>
-
-          <!-- Episode Image -->
-          <div class="col-md-3">
-            <label>Episode Image</label>
-            @if($file->image)
-              <div class="mb-2">
-                <img src="{{ $file->image }}" width="120" class="rounded mb-1">
-              </div>
-            @endif
-            <input type="file" class="form-control image-file" data-file-id="{{ $file->id }}">
-            <input type="hidden" name="existing_files[{{ $file->id }}][image]" value="{{ $file->image }}">
-          </div>
-
-          <!-- Remove Button -->
-          <div class="col-md-1 text-end">
-            <button type="button" class="btn btn-danger remove-file-item">X</button>
-          </div>
-
-        </div>
+          </ul>
       </div>
-      @endforeach
+      @endif
+
+      <form id="editVideoForm" method="POST" 
+            action="{{ route('admin.videos.update', $video->id) }}" 
+            enctype="multipart/form-data">
+          @csrf
+          @method('PUT')
+
+          {{-- Main Details --}}
+          <div class="mb-3">
+              <label>Title</label>
+              <input type="text" name="title" class="form-control" required value="{{ $video->title }}">
+          </div>
+
+          <div class="mb-3">
+              <label>Description</label>
+              <textarea name="description" class="form-control" rows="3">{{ $video->description }}</textarea>
+          </div>
+
+          <div class="mb-3">
+              <label>Category</label>
+              <select name="category_id" class="form-select" required>
+                  <option value="">Select Category</option>
+                  @foreach($categories as $cat)
+                      <option value="{{ $cat->id }}" {{ $video->category_id == $cat->id ? 'selected' : '' }}>
+                          {{ $cat->name }}
+                      </option>
+                  @endforeach
+              </select>
+          </div>
+
+          <div class="mb-3">
+              <label>Subcategory</label>
+              <select name="subcategory_id" class="form-select">
+                  <option value="">Select Subcategory</option>
+                  @foreach(\App\Models\Subcategory::all() as $subcat)
+                      <option value="{{ $subcat->id }}" {{ $video->subcategory_id == $subcat->id ? 'selected' : '' }}>
+                          {{ $subcat->name }}
+                      </option>
+                  @endforeach
+              </select>
+          </div>
+
+          {{-- Thumbnail --}}
+          <div class="mb-3">
+              <label>Thumbnail</label>
+              @if($video->thumbnail)
+                  <img src="{{ $video->thumbnail }}" width="150" class="mb-2" id="thumbnail-preview">
+              @endif
+              <input type="file" name="thumbnail_file" class="form-control" id="thumbnailFile">
+              <input type="hidden" name="thumbnail" id="thumbnail-url" value="{{ $video->thumbnail }}">
+          </div>
+
+          <hr>
+          <h4>Video Files / Episodes</h4>
+          <div id="video-files-container">
+              @foreach($video->files as $file)
+              <div class="video-file-item mb-4 border rounded p-3">
+                  <div class="row g-3 align-items-end">
+
+                      <div class="col-md-3">
+                          <label>Video File</label>
+                          <input type="hidden" name="videos[{{ $loop->index }}][file_url]" value="{{ $file->file_url }}">
+                          <video width="100%" controls class="mb-1">
+                              <source src="{{ $file->file_url }}">
+                          </video>
+                          <input type="file" class="form-control video-file">
+                          <div class="progress video-progress mt-1" style="height: 20px; display:none;">
+                              <div class="progress-bar" role="progressbar" style="width:0%">0%</div>
+                          </div>
+                      </div>
+
+                      <div class="col-md-3">
+                          <label>Variant / Label</label>
+                          <input type="text" name="videos[{{ $loop->index }}][variant]" class="form-control" value="{{ $file->variant }}">
+                      </div>
+
+                      <div class="col-md-2">
+                          <label>Duration</label>
+                          <input type="text" name="videos[{{ $loop->index }}][duration]" class="form-control" value="{{ $file->duration }}">
+                      </div>
+
+                      <div class="col-md-2">
+                          <label>DRM?</label>
+                          <select name="videos[{{ $loop->index }}][drm]" class="form-select">
+                              <option value="0" {{ !$file->drm ? 'selected' : '' }}>No</option>
+                              <option value="1" {{ $file->drm ? 'selected' : '' }}>Yes</option>
+                          </select>
+                      </div>
+
+                      <div class="col-md-2">
+                          <label>Episode Image</label>
+                          @if($file->image)
+                              <img src="{{ $file->image }}" width="100" class="mb-1">
+                          @endif
+                          <input type="file" class="form-control image-file">
+                          <input type="hidden" name="videos[{{ $loop->index }}][image]" value="{{ $file->image }}">
+                          <div class="progress image-progress mt-1" style="height: 20px; display:none;">
+                              <div class="progress-bar bg-success" role="progressbar" style="width:0%">0%</div>
+                          </div>
+                      </div>
+
+                      <input type="hidden" name="videos[{{ $loop->index }}][season]" value="{{ $file->season_id }}">
+
+                      <div class="col-12 text-end">
+                          <button type="button" class="btn btn-danger remove-file-item mt-2">Remove</button>
+                      </div>
+                  </div>
+              </div>
+              @endforeach
+          </div>
+
+          <button type="button" class="btn btn-secondary mb-3" id="add-video-file">+ Add Another File</button>
+
+          <div>
+              <button type="submit" class="btn btn-success">Update Video</button>
+          </div>
+
+      </form>
     </div>
-
-    <!-- Add New File Button -->
-    <button type="button" class="btn btn-secondary mb-3" id="add-video-file">+ Add Another File</button>
-
-    <div id="progressContainer"></div>
-    <button type="submit" class="btn btn-success mt-3">Update Video</button>
-  </form>
+  </div>
 </div>
 
 @push('scripts')
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-$(document).ready(function() {
+let newIndex = {{ $video->files->count() }};
 
-  // ------------------------------
-  // Load subcategories
-  // ------------------------------
-  let currentSub = "{{ $video->subcategory_id }}";
-  function loadSubcategories(catId){
-    const subSelect = $('#subcategory-select');
-    subSelect.html('<option>Loading...</option>');
-    if(catId){
-      $.getJSON(`/api/categories/${catId}/subcategories`, function(resp){
-        subSelect.empty().append('<option value="">Select Subcategory</option>');
-        resp.data.forEach(sub =>
-          subSelect.append(`<option value="${sub.id}" ${sub.id==currentSub?'selected':''}>${sub.name}</option>`)
-        );
-      });
+// Helper: Upload to S3 with progress
+async function uploadToS3(file, url, progressBarElement) {
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("PUT", url);
+
+        xhr.upload.addEventListener("progress", e => {
+            if(e.lengthComputable && progressBarElement){
+                const percent = Math.round((e.loaded / e.total) * 100);
+                progressBarElement.style.display = "block";
+                progressBarElement.querySelector(".progress-bar").style.width = percent + "%";
+                progressBarElement.querySelector(".progress-bar").innerText = percent + "%";
+            }
+        });
+
+        xhr.onload = () => {
+            if(xhr.status === 200 || xhr.status === 204){
+                progressBarElement.querySelector(".progress-bar").style.width = "100%";
+                progressBarElement.querySelector(".progress-bar").innerText = "100%";
+                resolve();
+            } else reject(`Upload failed with status ${xhr.status}`);
+        };
+
+        xhr.onerror = () => reject("Upload error");
+        xhr.send(file);
+    });
+}
+
+// Add new video file item
+document.getElementById('add-video-file').addEventListener('click', function() {
+    const container = document.getElementById('video-files-container');
+    const template = document.querySelector('.video-file-item').cloneNode(true);
+
+    // Clear inputs
+    template.querySelectorAll('input').forEach(input => {
+        if(input.type !== 'hidden') input.value = '';
+    });
+    template.querySelectorAll('select').forEach(sel => sel.selectedIndex = 0);
+    template.querySelectorAll('video, img').forEach(el => el.remove());
+
+    // Reset progress bars
+    template.querySelectorAll('.progress').forEach(p => {
+        p.style.display = 'none';
+        p.querySelector('.progress-bar').style.width = '0%';
+        p.querySelector('.progress-bar').innerText = '0%';
+    });
+
+    template.querySelectorAll('input, select').forEach(el => {
+        if(!el.name) return;
+        el.name = el.name.replace(/\[\d+\]/, `[${newIndex}]`);
+    });
+
+    container.appendChild(template);
+    newIndex++;
+});
+
+// Remove file item
+document.getElementById('video-files-container').addEventListener('click', function(e) {
+    if(e.target.matches('.remove-file-item')) {
+        const item = e.target.closest('.video-file-item');
+        if(!item) return;
+        const allItems = document.querySelectorAll('.video-file-item');
+        if(allItems.length <= 1){ alert('At least one video file is required.'); return; }
+        item.remove();
+
+        // Reindex
+        let idx = 0;
+        document.querySelectorAll('.video-file-item').forEach(div => {
+            div.querySelectorAll('input, select').forEach(el => {
+                if(!el.name) return;
+                el.name = el.name.replace(/\[\w+\]/, `[${idx}]`);
+            });
+            idx++;
+        });
     }
-  }
-  loadSubcategories($('#category-select').val());
-  $('#category-select').on('change', function(){ loadSubcategories($(this).val()); });
+});
 
-  // ------------------------------
-  // Add Video File Block
-  // ------------------------------
-  $('#add-video-file').click(function(){
-    const clone = $('.video-file-item').first().clone();
+// Thumbnail upload
+document.getElementById('thumbnailFile').addEventListener('change', async function() {
+    const file = this.files[0];
+    if(!file) return;
 
-    clone.find('input[type=text], input[type=file], input[type=hidden]').val('');
-    clone.find('video').remove();
-
-    clone.find('select').prop('selectedIndex',0);
-
-    $('#video-files-container').append(clone);
-  });
-
-  // Remove File Block
-  $('#video-files-container').on('click','.remove-file-item', function(){
-    $(this).closest('.video-file-item').remove();
-  });
-
-  // ------------------------------
-  // Upload to S3 (XHR PUT)
-  // ------------------------------
-  async function uploadFileToS3(file,url,progressBar){
-    return new Promise((resolve,reject)=>{
-      const xhr = new XMLHttpRequest();
-      xhr.open('PUT', url);
-      xhr.upload.onprogress = e=>{
-        if(e.lengthComputable && progressBar){
-          const percent = Math.round(e.loaded/e.total*100);
-          progressBar.style.width = percent+'%';
-          progressBar.textContent = percent+'%';
-        }
-      };
-      xhr.onload = ()=>xhr.status===200?resolve():reject('Upload failed');
-      xhr.onerror = ()=>reject('Upload error');
-      xhr.send(file);
+    const res = await fetch("{{ route('admin.videos.presigned.url') }}", {
+        method:'POST',
+        headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Content-Type':'application/json'},
+        body: JSON.stringify({ filename:file.name, content_type:file.type, type:'thumbnail' })
     });
-  }
-
-  // ------------------------------
-  // Thumbnail Upload
-  // ------------------------------
-  $('#thumbnailFile').on('change', async function(){
-    const file = this.files[0]; if(!file) return;
-
-    const res = await fetch('{{ route("admin.videos.presigned.url") }}',{
-      method:'POST',
-      headers:{
-        'X-CSRF-TOKEN':'{{ csrf_token() }}',
-        'Content-Type':'application/json'
-      },
-      body: JSON.stringify({
-        filename:file.name,
-        content_type:file.type,
-        type:'thumbnail'
-      })
-    });
-
     const data = await res.json();
-    await uploadFileToS3(file,data.url,$('#thumbProgress')[0]);
-    $('#thumbnail-url').val(data.file_url);
-    $('#thumbnail-preview').attr('src',data.file_url).show();
-  });
+    const progressBar = document.querySelector('.image-progress');
+    await uploadToS3(file, data.url, progressBar);
 
-  // ------------------------------
-  // Episode Image Upload
-  // ------------------------------
-  $('#video-files-container').on('change','.image-file', async function(){
-    const file = this.files[0]; if(!file) return;
-    const fileId = $(this).data('file-id');
+    document.getElementById('thumbnail-url').value = data.file_url;
+    document.getElementById('thumbnail-preview').src = data.file_url;
+});
 
-    const res = await fetch('{{ route("admin.videos.presigned.url") }}',{
-      method:'POST',
-      headers:{
-        'X-CSRF-TOKEN':'{{ csrf_token() }}',
-        'Content-Type':'application/json'
-      },
-      body: JSON.stringify({filename:file.name, content_type:file.type, type:'video_image'})
+// Video / Image upload with per-item progress
+document.getElementById('video-files-container').addEventListener('change', async function(e){
+    if(!e.target.classList.contains('video-file') && !e.target.classList.contains('image-file')) return;
+
+    const file = e.target.files[0];
+    const type = e.target.classList.contains('video-file') ? 'video' : 'video_image';
+    const progressBar = e.target.closest('.video-file-item').querySelector(
+        type === 'video' ? '.video-progress' : '.image-progress'
+    );
+
+    const res = await fetch("{{ route('admin.videos.presigned.url') }}", {
+        method:'POST',
+        headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Content-Type':'application/json'},
+        body: JSON.stringify({ filename:file.name, content_type:file.type, type })
     });
-
     const data = await res.json();
-    await uploadFileToS3(file,data.url,null);
 
-    $(`input[name="existing_files[${fileId}][image]"]`).val(data.file_url);
-    alert('Episode image uploaded!');
-  });
+    await uploadToS3(file, data.url, progressBar);
 
-  // ------------------------------
-  // Submit Update Form
-  // ------------------------------
-  $('#presignedEditForm').on('submit', async function(e){
-    e.preventDefault();
-
-    const formData = new FormData(this);
-
-    // NEW video files
-    $('.video-file-item').each(function(){
-      const fileInput = $(this).find('.video-file')[0];
-      const year_of_published = $('[name="year_of_published"]').val();
-              const season_id = $('[name="season_id"]').val();
-
-
-      if(fileInput && fileInput.files[0]){
-        formData.append('new_videos[]', fileInput.files[0]);
-        formData.append('new_variants[]', $(this).find('.variant').val());
-        formData.append('new_seasons[]', $(this).find('.season-select').val());
-        formData.append('new_durations[]', $(this).find('.duration').val());
-        formData.append('new_drms[]', $(this).find('.drm').val());
-        formData.append('year_of_published', year_of_published);
-formData.append('season_id', season_id);
-
-
-        const img = $(this).find('.image-file')[0];
-        if(img && img.files[0]) formData.append('new_images[]', img.files[0]);
-      }
-    });
-
-    const res = await fetch(`{{ route('admin.videos.update', $video->id) }}`,{
-      method:'POST',
-      headers:{ 'X-CSRF-TOKEN':'{{ csrf_token() }}' },
-      body:formData
-    });
-
-    const result = await res.json();
-    alert(result.message || result.error || 'Updated!');
-    if(result.success) location.reload();
-  });
-
+    const hiddenInput = e.target.parentNode.querySelector(
+        type === 'video' ? 'input[name*="[file_url]"]' : 'input[name*="[image]"]'
+    );
+    if(hiddenInput) hiddenInput.value = data.file_url;
 });
 </script>
 @endpush
