@@ -56,6 +56,17 @@
                   @endforeach
               </select>
           </div>
+<div class="mb-3">
+    <label>Season</label>
+    <select name="season_id" class="form-select">
+        <option value="">Select Season</option>
+        @foreach($seasons as $s)
+            <option value="{{ $s->id }}" {{ $video->season_id == $s->id ? 'selected' : '' }}>
+                {{ $s->name }}
+            </option>
+        @endforeach
+    </select>
+</div>
 
           {{-- Thumbnail --}}
           <div class="mb-3">
@@ -103,6 +114,17 @@
                               <option value="1" {{ $file->drm ? 'selected' : '' }}>Yes</option>
                           </select>
                       </div>
+<div class="col-md-2">
+    <label>Season</label>
+    <select name="videos[{{ $loop->index }}][season]" class="form-select season">
+        <option value="">Select Season</option>
+        @foreach($seasons as $s)
+            <option value="{{ $s->id }}" {{ $file->season_id == $s->id ? 'selected' : '' }}>
+                {{ $s->name }}
+            </option>
+        @endforeach
+    </select>
+</div>
 
                       <div class="col-md-2">
                           <label>Episode Image</label>
