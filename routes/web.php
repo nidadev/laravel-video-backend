@@ -23,10 +23,8 @@ Route::middleware('admin.auth')->group(function () {
 
     // Video Management
     Route::get('/admin/videos', [VideoController::class, 'index'])->name('admin.videos');
-    //Route::get('/admin/videos/create', [VideoController::class, 'create'])->name('admin.videos.create');
-    //Route::post('/admin/videos', [VideoController::class, 'store'])->name('admin.videos.store');
     Route::get('/admin/videos/{id}/edit', [VideoController::class, 'edit'])->name('admin.videos.edit');
-    Route::post('/admin/videos/{id}/update', [VideoController::class, 'update'])->name('admin.videos.update');
+    Route::put('/admin/videos/{id}/update', [VideoController::class, 'updatePresigned'])->name('admin.videos.update');
     Route::delete('/admin/videos/{id}', [VideoController::class, 'destroy'])->name('admin.videos.destroy');
 
      // 🆕 Presigned S3 Upload Routes

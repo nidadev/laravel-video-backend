@@ -9,6 +9,8 @@ use App\Models\Category;
 use Illuminate\Support\Facades\Storage;
 use Aws\S3\S3Client;
 use App\Models\Season;
+use App\Models\VideoFile;
+
 
 class VideoController extends Controller
 {
@@ -79,88 +81,81 @@ public function edit($id)
 
 
 
+
 public function update(Request $request, $id)
 {
     $video = Video::with('files')->findOrFail($id);
 
     $request->validate([
-        'title'=>'required|string|max:255',
-        'description'=>'nullable|string',
-        'year_of_published' => 'nullable|integer|min:1900|max:2099',
-
-        'category_id'=>'required|exists:categories,id',
-        'subcategory_id'=>'nullable|exists:subcategories,id',
-        'status'=>'nullable|string',
-        'thumbnail'=>'nullable|string',
-        'existing_files'=>'nullable|array',
-        'delete_files'=>'nullable|array',
-    'season_id' => 'nullable|exists:seasons,id',
+        'title' => 'required|string|max:255',
+        'description' => 'nullable|string',
+        'category_id' => 'required|exists:categories,id',
+        'subcategory_id' => 'nullable|exists:subcategories,id',
+        'thumbnail' => 'nullable|string',
     ]);
 
     try {
+        // Update main video details
         $video->update([
-            'title'=>$request->title,
-            'description'=>$request->description,
-            'year_of_published' => $request->year_of_published,
-'season_id'=>$request->season_id,
-            'category_id'=>$request->category_id,
-            'subcategory_id'=>$request->subcategory_id,
-            'status'=>$request->status ?? 'ready',
-            'thumbnail'=>$request->thumbnail ?? $video->thumbnail,
+            'title' => $request->title,
+            'description' => $request->description,
+            'category_id' => $request->category_id,
+            'subcategory_id' => $request->subcategory_id,
+            'thumbnail' => $request->thumbnail,
         ]);
 
-        // Delete removed files
-        if($request->filled('delete_files')){
-            $video->files()->whereIn('id',$request->delete_files)->delete();
-        }
-
         // Update existing files
-        if($request->filled('existing_files')){
-            foreach($request->existing_files as $fileData){
-                if(!isset($fileData['id'])) continue;
-                $file = $video->files()->find($fileData['id']); if(!$file) continue;
-
-                $file->update([
-                    'variant'=>$fileData['variant'] ?? $file->variant,
-'season_id' => $fileData['season_id'] ?? $file->season_id,
-                    'duration'=>$fileData['duration'] ?? $file->duration,
-                    'drm'=>$fileData['drm'] ?? $file->drm,
-                    'image'=>$fileData['image'] ?? $file->image,
-                    'file_url'=>$fileData['file_url'] ?? $file->file_url,
-                ]);
-            }
-        }
-
-        // New video files
-        if($request->has('new_videos')){
-            foreach($request->file('new_videos') as $idx => $file){
-                $path = 'videos/'.uniqid().'-'.$file->getClientOriginalName();
-                Storage::disk('s3')->put($path, file_get_contents($file), ['ACL'=>'public-read']);
-                $imageUrl = null;
-                if($request->hasFile('new_images') && isset($request->file('new_images')[$idx])){
-                    $img = $request->file('new_images')[$idx];
-                    $imgPath = 'thumbnails/'.uniqid().'-'.$img->getClientOriginalName();
-                    Storage::disk('s3')->put($imgPath, file_get_contents($img), ['ACL'=>'public-read']);
-                    $imageUrl = Storage::disk('s3')->url($imgPath);
+        if ($request->existing_files) {
+            foreach ($request->existing_files as $fileData) {
+                if (empty($fileData['file_url'])) continue; // skip empty
+                $file = VideoFile::find($fileData['id']);
+                if ($file) {
+                    $file->update([
+                        'file_url' => $fileData['file_url'],
+                        'variant'  => $fileData['variant'] ?? $file->variant,
+                        'drm'      => $fileData['drm'] ?? $file->drm,
+                        'duration' => $fileData['duration'] ?? $file->duration,
+                        'image'    => $fileData['image'] ?? $file->image,
+                    ]);
                 }
-
-                $video->files()->create([
-                    'variant'=>$request->new_variants[$idx] ?? 'Default',
-'season_id' => $request->new_seasons[$idx] ?? null,
-                    'file_url'=>Storage::disk('s3')->url($path),
-                    'image'=>$imageUrl,
-                    'drm'=>$request->new_drms[$idx] ?? 0,
-                    'duration'=>$request->new_durations[$idx] ?? null,
-                ]);
             }
         }
 
-        return response()->json(['success'=>true,'message'=>'Video updated successfully!']);
-    } catch(\Exception $e){
-        \Log::error($e->getMessage());
-        return response()->json(['success'=>false,'error'=>$e->getMessage()]);
+        // Add new files (skip empty file_url)
+       // Add new files (skip empty file_url)
+// Add new video files (skip any without file_url)
+if ($request->new_files) {
+    foreach ($request->new_files as $fileData) {
+        // Skip any new file without a file_url
+        if (empty($fileData['file_url'])) continue;
+
+        VideoFile::create([
+            'video_id' => $video->id,
+            'file_url' => $fileData['file_url'],
+            'variant'  => $fileData['variant'] ?? null,
+            'drm'      => $fileData['drm'] ?? 0,
+            'duration' => $fileData['duration'] ?? null,
+            'image'    => $fileData['image'] ?? null,
+        ]);
     }
 }
+
+        return redirect()
+            ->route('admin.videos.edit', $video->id)
+            ->with('success', 'Video updated successfully');
+
+    } catch (\Exception $e) {
+        \Log::error('Video update failed', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+            'request' => $request->all(),
+        ]);
+
+        return back()->withErrors('Update failed, check logs for details');
+    }
+}
+
+
 
 
 
@@ -227,6 +222,96 @@ public function generatePresignedUrl(Request $request)
     }
 }
 
+public function updatePresigned(Request $request, $id)
+{
+    $video = Video::with('files')->findOrFail($id);
+
+    $request->validate([
+        'title' => 'required|string|max:255',
+        'description' => 'nullable|string',
+        'category_id' => 'required|exists:categories,id',
+        'subcategory_id' => 'nullable|exists:subcategories,id',
+        'thumbnail' => 'nullable|string',
+        'videos' => 'required|array|min:1',
+        'videos.*.file_url' => 'required|string',
+        'videos.*.image' => 'nullable|string',
+        'videos.*.variant' => 'nullable|string|max:255',
+        'videos.*.season' => 'nullable|exists:seasons,id',
+        'videos.*.drm' => 'nullable|boolean',
+        'videos.*.duration' => 'nullable|string|max:50',
+        'videos.*.original_name' => 'nullable|string',
+        'videos.*.size' => 'nullable|numeric',
+        'videos.*.mime' => 'nullable|string',
+        'year_of_published' => 'nullable|digits:4|integer|min:1900|max:2100',
+        'season_id' => 'nullable|exists:seasons,id',
+    ]);
+
+    try {
+        // ✅ Update main video
+        $video->update([
+            'title' => $request->title,
+            'description' => $request->description,
+            'season_id' => $request->season_id,
+            'category_id' => $request->category_id,
+            'subcategory_id' => $request->subcategory_id,
+            'thumbnail' => $request->thumbnail,
+            'year_of_published' => $request->year_of_published,
+        ]);
+
+        // Delete old files that are no longer in the request
+        $incomingFileUrls = array_column($request->videos, 'file_url');
+        $video->files()->whereNotIn('file_url', $incomingFileUrls)->delete();
+
+        // Save or update files
+        foreach ($request->videos as $fileData) {
+            $existingFile = $video->files()->where('file_url', $fileData['file_url'])->first();
+
+            if ($existingFile) {
+                // ✅ Update existing file
+                $existingFile->update([
+                    'variant' => $fileData['variant'] ?? $existingFile->variant,
+                    'season_id' => $fileData['season'] ?? $existingFile->season_id,
+                    'image' => $fileData['image'] ?? $existingFile->image,
+                    'drm' => $fileData['drm'] ?? $existingFile->drm,
+                    'duration' => $fileData['duration'] ?? $existingFile->duration,
+                    'meta' => json_encode([
+                        'original_name' => $fileData['original_name'] ?? null,
+                        'size' => $fileData['size'] ?? null,
+                        'mime' => $fileData['mime'] ?? null,
+                    ]),
+                ]);
+            } else {
+                // ✅ New file
+                $video->files()->create([
+                    'file_url' => $fileData['file_url'],
+                    'variant' => $fileData['variant'] ?? 'Default',
+                    'season_id' => $fileData['season'] ?? null,
+                    'image' => $fileData['image'] ?? null,
+                    'drm' => $fileData['drm'] ?? false,
+                    'duration' => $fileData['duration'] ?? null,
+                    'meta' => json_encode([
+                        'original_name' => $fileData['original_name'] ?? null,
+                        'size' => $fileData['size'] ?? null,
+                        'mime' => $fileData['mime'] ?? null,
+                    ]),
+                ]);
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => '✅ Video updated successfully!',
+            'video_id' => $video->id,
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Video update failed: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+}
 
 
 public function storePresigned(Request $request)
