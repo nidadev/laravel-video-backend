@@ -613,14 +613,35 @@ public function dashboard(Request $request)
     $subcategoryId = $request->subcategory_id;
 
     /* =====================================================
-       1. RANDOM BANNER VIDEO (NO FILES)
+       1. BANNER VIDEOS (3 RANDOM) — AS ARRAY OBJECTS
     ===================================================== */
-    $bannerVideo = Video::inRandomOrder()
-        ->first(['id', 'title', 'thumbnail', 'season_id','description', 'year_of_published']);
+    $bannerQuery = Video::query();
+
+    if ($categoryId) {
+        $bannerQuery->where('category_id', $categoryId);
+    }
+
+    if ($subcategoryId) {
+        $bannerQuery->where('subcategory_id', $subcategoryId);
+    }
+
+    $bannerVideos = $bannerQuery
+        ->inRandomOrder()
+        ->take(3)
+        ->get([
+            'id',
+            'title',
+            'thumbnail',
+            'description',
+            'season_id',
+            'year_of_published',
+            'category_id',
+            'subcategory_id'
+        ]);
 
 
     /* =====================================================
-       2. TRENDING LIST (NO FILES)
+       2. TRENDING LIST
     ===================================================== */
     $trendingQuery = Video::where('is_trending', true)
         ->orderBy('created_at', 'desc');
@@ -646,7 +667,7 @@ public function dashboard(Request $request)
 
 
     /* =====================================================
-       3. MOST WATCHED LIST (NO FILES)
+       3. MOST WATCHED LIST
     ===================================================== */
     $mostWatchedQuery = Video::withCount('views')
         ->orderBy('views_count', 'desc');
@@ -672,12 +693,12 @@ public function dashboard(Request $request)
 
 
     /* =====================================================
-       FINAL RESPONSE (NO FILES)
+       FINAL RESPONSE
     ===================================================== */
     return response()->json([
         'message' => 'Videos fetched successfully',
         'data' => [
-            'banner_video' => $bannerVideo,
+            'banner_videos' => $bannerVideos,   // <-- ARRAY OF 3 OBJECTS
             'trending' => $trending,
             'most_watched' => $mostWatched,
         ],
@@ -685,6 +706,7 @@ public function dashboard(Request $request)
         'success' => true,
     ], 200);
 }
+
 
 
 

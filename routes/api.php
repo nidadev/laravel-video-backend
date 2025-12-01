@@ -37,16 +37,9 @@ Route::middleware(['jwt.auth'])->group(function () {
     Route::post('/subscribe', [SubscriptionController::class, 'purchase']);
     Route::get('/subscription', [SubscriptionController::class, 'current']);
          Route::post('/videos/{id}/view', [VideoController::class, 'recordView']);
-         Route::get('/plans', [SubscriptionController::class, 'getPlanDetails']);
 
 
-
-    //payment
-
-    // Route::post('/payment/checkout', [PaymentController::class, 'createCheckoutSession']);
-    //Route::get('/payment/success', [PaymentController::class, 'paymentSuccess']);
-
-     
+   
 
      Route::get('/users', [UserApiController::class, 'index']);
 Route::get('/users/{id}', [UserApiController::class, 'show']);
@@ -72,6 +65,8 @@ Route::prefix('auth')->group(function () {
     Route::post('send-otp', [OtpController::class, 'sendOtp']);
     Route::post('verify-otp', [OtpController::class, 'verifyOtp']);
 });
+         Route::get('/plans', [SubscriptionController::class, 'getPlanDetails']);
+
 Route::get('/categories', [CategoryController::class, 'index']);
 Route::get('/videos/trendingwatched', [VideoController::class, 'trendingAndMostWatched']);
 
