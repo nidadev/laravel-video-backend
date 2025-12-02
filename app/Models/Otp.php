@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Otp extends Model
 {
     //
-    protected $fillable = ['phone', 'otp_code', 'expires_at'];
+    protected $fillable = ['phone','email', 'otp_code', 'expires_at'];
     public $timestamps = true;
 
     public function isExpired()
