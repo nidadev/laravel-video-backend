@@ -10,6 +10,10 @@ use App\Models\VideoView;
 use App\Models\TrendingVideo;
 use App\Models\Category;
 use App\Models\Season;
+use App\Models\Plan;
+use App\Models\GooglePayPurchase;
+
+
 
 
 
@@ -766,31 +770,33 @@ public function search(Request $request)
             $score += 20;
         }
 
-        // Popularity boost (based on views)
+        // Popularity boost (based on views count)
         $score += ($video->views_count / 10);
 
         // Recency boost
         $daysOld = now()->diffInDays($video->created_at);
-        $score += max(0, (30 - $daysOld)); // newer = higher score
+        $score += max(0, (30 - $daysOld));
 
         $video->search_score = $score;
 
         return $video;
     });
 
-    // Sort by algorithm score descending
-    $sorted = $videos->sortByDesc('search_score')
-                     ->values();
+    // Sort results
+    $sorted = $videos->sortByDesc('search_score')->values();
 
-    // Now paginate manually
+    /* =============================
+        PAGINATION
+    ==============================*/
     $perPage = 10;
-    $page = request('page', 1);
+    $page = $request->query('page', 1);
+
     $pagedResults = new \Illuminate\Pagination\LengthAwarePaginator(
         $sorted->slice(($page - 1) * $perPage, $perPage)->values(),
         $sorted->count(),
         $perPage,
         $page,
-        ['path' => url()->current()]
+        ['path' => url()->current(), 'query' => $request->query()]
     );
 
     /* =============================
@@ -806,17 +812,93 @@ public function search(Request $request)
         'data' => [
             'top_result' => $topResult,
 
-            //'videos' => $pagedResults->items(),
+            // 🔥 fixed: now returning videos
+            'videos' => $pagedResults->items(),
+
             'current_page' => $pagedResults->currentPage(),
             'per_page' => $pagedResults->perPage(),
             'total' => $pagedResults->total(),
             'last_page' => $pagedResults->lastPage(),
-
         ],
         'response' => 200,
         'success' => true
-    ], 200);
+    ]);
 }
+
+
+
+public function googlePayPurchase(Request $request)
+{
+    $request->validate([
+        'plan_id' => 'required|exists:plans,id',
+        'googlepay_transaction_id' => 'required|string',
+        'googlepay_email' => 'required|email',
+        'payment_response' => 'required|array',
+    ]);
+
+    $user = $request->user();
+    $plan = Plan::findOrFail($request->plan_id);
+
+    try {
+        // ✅ Save Google Pay purchase
+        $payment = \App\Models\GooglePayPurchase::create([
+            'user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'googlepay_transaction_id' => $request->googlepay_transaction_id,
+            'googlepay_email' => $request->googlepay_email,
+            'payment_response' => json_encode($request->payment_response),
+            'status' => 'completed', // make sure column type supports this value
+        ]);
+
+        // ✅ Determine subscription duration
+        $startDate = now();
+        switch (strtolower($plan->type)) {
+            case 'weekly':
+                $endDate = $startDate->copy()->addWeek();
+                break;
+            case 'monthly':
+                $endDate = $startDate->copy()->addMonth();
+                break;
+            case 'yearly':
+                $endDate = $startDate->copy()->addYear();
+                break;
+            default:
+                $endDate = $startDate->copy()->addDays(7); // default for free/trial plan
+        }
+
+        // ✅ Store subscription
+        \App\Models\Subscription::create([
+            'user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'status' => 'active',
+        ]);
+
+        return response()->json([
+            'message' => 'Google Pay purchase recorded and subscription created successfully',
+            'data' => [
+                'payment' => $payment,
+                'plan' => $plan->name,
+                'start_date' => $startDate->toDateTimeString(),
+                'end_date' => $endDate->toDateTimeString(),
+            ],
+            'response' => 200,
+            'success' => true,
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Google Pay purchase or subscription failed: ' . $e->getMessage());
+
+        return response()->json([
+            'message' => 'Failed to record Google Pay purchase or create subscription',
+            'data' => ['error' => $e->getMessage()],
+            'response' => 500,
+            'success' => false,
+        ]);
+    }
+}
+
 
 
 
