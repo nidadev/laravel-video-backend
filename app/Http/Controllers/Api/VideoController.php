@@ -726,10 +726,8 @@ public function search(Request $request)
     $categoryId = $request->category_id;
     $subcategoryId = $request->subcategory_id;
 
-    /* =============================
-        BASE QUERY + FILTERS
-    ==============================*/
-    $baseQuery = Video::with(['files', 'views'])
+    // Base query with filters
+    $baseQuery = Video::query()
         ->when($categoryId, fn($q) => $q->where('category_id', $categoryId))
         ->when($subcategoryId, fn($q) => $q->where('subcategory_id', $subcategoryId))
         ->where(function ($q) use ($keyword) {
@@ -740,90 +738,58 @@ public function search(Request $request)
 
     $videos = $baseQuery->get();
 
-    /* ============================================
-        APPLY SEARCH SCORING ALGORITHM
-    ============================================ */
+    // Apply search scoring algorithm
     $videos = $videos->map(function ($video) use ($keyword) {
-
         $title = strtolower($video->title);
         $desc  = strtolower($video->description ?? "");
 
         $score = 0;
+        if ($title === $keyword) $score += 50;
+        if (str_contains($title, $keyword)) $score += 30;
+        if (str_contains($desc, $keyword)) $score += 10;
+        if ($video->is_trending) $score += 20;
 
-        // Exact match in title
-        if ($title === $keyword) {
-            $score += 50;
-        }
-
-        // Partial match in title
-        if (str_contains($title, $keyword)) {
-            $score += 30;
-        }
-
-        // Match in description
-        if (str_contains($desc, $keyword)) {
-            $score += 10;
-        }
-
-        // Trending boost
-        if ($video->is_trending) {
-            $score += 20;
-        }
-
-        // Popularity boost (based on views count)
         $score += ($video->views_count / 10);
-
-        // Recency boost
         $daysOld = now()->diffInDays($video->created_at);
         $score += max(0, (30 - $daysOld));
 
         $video->search_score = $score;
 
-        return $video;
+        // Return all required fields without 'files'
+        return [
+            'id' => $video->id,
+            'title' => $video->title,
+            'description' => $video->description,
+            'year_of_published' => $video->year_of_published,
+            'created_by' => $video->created_by,
+            'status' => $video->status,
+            'duration' => $video->duration,
+            'thumbnail' => $video->thumbnail,
+            'created_at' => $video->created_at,
+            'updated_at' => $video->updated_at,
+            'category_id' => $video->category_id,
+            'subcategory_id' => $video->subcategory_id,
+            'season_id' => $video->season_id,
+            'is_trending' => $video->is_trending,
+            'views_count' => $video->views_count,
+            'search_score' => $video->search_score,
+        ];
     });
 
-    // Sort results
-    $sorted = $videos->sortByDesc('search_score')->values();
+    // Sort by search score descending
+    $sortedVideos = $videos->sortByDesc('search_score')->values();
 
-    /* =============================
-        PAGINATION
-    ==============================*/
-    $perPage = 10;
-    $page = $request->query('page', 1);
-
-    $pagedResults = new \Illuminate\Pagination\LengthAwarePaginator(
-        $sorted->slice(($page - 1) * $perPage, $perPage)->values(),
-        $sorted->count(),
-        $perPage,
-        $page,
-        ['path' => url()->current(), 'query' => $request->query()]
-    );
-
-    /* =============================
-        TOP RESULT
-    ==============================*/
-    $topResult = $sorted->first();
-
-    /* =============================
-        FINAL RESPONSE
-    ==============================*/
     return response()->json([
         'message' => 'Videos fetched successfully',
         'data' => [
-            'top_result' => $topResult,
-
-            // 🔥 fixed: now returning videos
-            'videos' => $pagedResults->items(),
-
-            'current_page' => $pagedResults->currentPage(),
-            'per_page' => $pagedResults->perPage(),
-            'total' => $pagedResults->total(),
-            'last_page' => $pagedResults->lastPage(),
+            'top_result' => $sortedVideos, // array of cleaned video objects
         ],
         'response' => 200,
         'success' => true
     ]);
 }
+
+
 
 
 
