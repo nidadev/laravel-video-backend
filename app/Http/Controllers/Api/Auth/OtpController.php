@@ -109,31 +109,44 @@ public function verifyOtp(Request $request)
         ]);
     }
 
-    // Create / get user by email
+    // Create or get user
     $user = User::firstOrCreate(
         ['email' => $email],
-        ['name' => 'User_' . Str::random(5), 'password' => bcrypt(Str::random(10))]
+        [
+            'name' => 'User_' . Str::random(5),
+            'password' => bcrypt(Str::random(10))
+        ]
     );
 
-    // Delete all OTPs for this email
+    // Delete OTPs
     Otp::where('email', $email)->delete();
 
-    // Generate JWT
+    // Generate JWT token
     JWTAuth::factory()->setTTL(10080); // 7 days
     $token = JWTAuth::fromUser($user);
+
+    /* ------------------------------------
+       🔍 Fetch Active Subscription
+    ------------------------------------ */
+    $activeSubscription = Subscription::with('plan')
+                        ->where('user_id', $user->id)
+                        ->active()   // status = active and end_date >= now()
+                        ->first();
 
     return response()->json([
         'message' => 'OTP verified successfully',
         'data' => [
             'token' => $token,
-            'user' => $user,
+            'token_type' => 'bearer',
             'expires_in' => JWTAuth::factory()->getTTL() * 60,
-            'token_type' => 'bearer'
+            'user' => $user,
+            'subscription' => $activeSubscription,   // 🔥 ADDED HERE
         ],
         'response' => 200,
         'success' => true,
     ]);
 }
+
 
 
 }
