@@ -13,6 +13,7 @@ use App\Models\Season;
 use App\Models\Plan;
 use App\Models\GooglePayPurchase;
 
+use App\Models\WatchHistory;
 
 
 
@@ -865,7 +866,67 @@ public function googlePayPurchase(Request $request)
     }
 }
 
+public function watchHistory(Request $request)
+{
+    $user = $request->user();
 
+    $history = WatchHistory::with([
+        'videoFile:id,video_id,variant,file_url,season_id',
+        'videoFile.video:id,title,description,thumbnail'
+    ])
+    ->where('user_id', $user->id)
+    ->orderBy('created_at', 'desc')
+    ->get()
+    ->map(function ($item) {
+        return [
+            'id' => $item->videoFile->id,
+            'video_id' => $item->videoFile->video_id,
+            'variant' => $item->videoFile->variant,
+            'file_url' => $item->videoFile->file_url,
+            'season_id' => $item->videoFile->season_id,
+            'video_title' => $item->videoFile->video->title,
+            'video_description' => $item->videoFile->video->description,
+            'video_thumbnail' => $item->videoFile->video->thumbnail,
+            'watched_seconds' => $item->watched_seconds,
+            'watched_at' => $item->created_at->toDateTimeString(),
+        ];
+    });
+
+    return response()->json([
+        'message' => 'Watch history fetched successfully',
+        'data' => $history,
+        'response' => 200,
+        'success' => true
+    ]);
+}
+
+
+
+public function storeWatchHistory(Request $request)
+{
+    $request->validate([
+        'video_file_id' => 'required|exists:video_files,id',
+        'watched_seconds' => 'nullable|integer|min:0',
+    ]);
+
+    $user = $request->user();
+
+    $watchHistory = \App\Models\WatchHistory::updateOrCreate(
+        [
+            'user_id' => $user->id,
+            'video_file_id' => $request->video_file_id,
+        ],
+        [
+            'watched_seconds' => $request->watched_seconds ?? 0,
+        ]
+    );
+
+    return response()->json([
+        'message' => 'Watch history recorded successfully',
+        'data' => $watchHistory,
+        'success' => true
+    ]);
+}
 
 
 

@@ -50,6 +50,10 @@ Route::delete('/users/{id}', [UserApiController::class, 'destroy']);
  Route::post('/users/update-profile', [UserApiController::class, 'updateProfile']);
 
  Route::post('/user/device-token', [UserApiController::class, 'saveDeviceToken']);
+ Route::get('/watch-history', [VideoController::class, 'watchHistory']);
+ Route::post('/watch-history', [VideoController::class, 'storeWatchHistory']);
+
+
 });
 
 Route::middleware(['auth:sanctum', 'is_admin1'])->group(function () {
@@ -87,7 +91,6 @@ Route::get('/videos/trendingwatched', [VideoController::class, 'trendingAndMostW
 Route::get('/dashboard', [VideoController::class, 'dashboard']);
 Route::get('/search', [VideoController::class, 'search']);
 Route::post('/videos', [VideoController::class, 'seeall']);
-
 
 
 Route::post('/payment/webhook', [PaymentWebhookController::class, 'handleWebhook']);
