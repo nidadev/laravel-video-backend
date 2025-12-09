@@ -95,6 +95,7 @@ public function verifyOtp(Request $request)
 
     $email = $request->email;
 
+    // Validate OTP
     $otpRecord = Otp::where('email', $email)
                     ->where('otp_code', $request->otp)
                     ->latest()
@@ -109,29 +110,61 @@ public function verifyOtp(Request $request)
         ]);
     }
 
-    // Create or get user
-    $user = User::firstOrCreate(
-        ['email' => $email],
-        [
-            'name' => 'User_' . Str::random(5),
-            'password' => bcrypt(Str::random(10))
-        ]
-    );
+    /* ---------------------------------------------------
+       👤 Check if user exists
+    --------------------------------------------------- */
+    $user = User::where('email', $email)->first();
+    $isNewUser = false;
 
-    // Delete OTPs
+    // If not exists -> create new user
+    if (!$user) {
+        $isNewUser = true;
+
+        $user = User::create([
+            'email' => $email,
+            'name' => 'User_' . Str::random(5),
+            'password' => bcrypt(Str::random(10)),
+        ]);
+    }
+
+    // Delete all OTPs
     Otp::where('email', $email)->delete();
 
-    // Generate JWT token
-    JWTAuth::factory()->setTTL(10080); // 7 days
+    /* ---------------------------------------------------
+       🔐 Generate JWT Token
+    --------------------------------------------------- */
+    JWTAuth::factory()->setTTL(10080);
     $token = JWTAuth::fromUser($user);
 
-    /* ------------------------------------
-       🔍 Fetch Active Subscription
-    ------------------------------------ */
-    $activeSubscription = Subscription::with('plan')
-                        ->where('user_id', $user->id)
-                        ->active()   // status = active and end_date >= now()
-                        ->first();
+    /* ---------------------------------------------------
+       📌 Subscription Handling
+    --------------------------------------------------- */
+
+    if ($isNewUser) {
+        /** NEW USER = give FREE subscription */
+
+        $freePlan = Plan::where('name', 'Free')->first(); // adjust name if needed
+
+        // Create free subscription for new user
+        $activeSubscription = Subscription::create([
+            'user_id' => $user->id,
+            'plan_id' => $freePlan->id,
+            'start_date' => now(),
+            'end_date' => now()->addDays(7),
+            'status' => 'active',
+        ]);
+
+        // Load plan relationship
+        $activeSubscription->load('plan');
+
+    } else {
+        /** EXISTING USER = load existing active subscription */
+
+        $activeSubscription = Subscription::with('plan')
+                            ->where('user_id', $user->id)
+                            ->active()
+                            ->first();
+    }
 
     return response()->json([
         'message' => 'OTP verified successfully',
@@ -140,12 +173,13 @@ public function verifyOtp(Request $request)
             'token_type' => 'bearer',
             'expires_in' => JWTAuth::factory()->getTTL() * 60,
             'user' => $user,
-            'subscription' => $activeSubscription,   // 🔥 ADDED HERE
+            'subscription' => $activeSubscription,
         ],
         'response' => 200,
         'success' => true,
     ]);
 }
+
 
 
 
