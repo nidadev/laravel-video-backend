@@ -12,6 +12,8 @@ use App\Http\Controllers\Api\PaymentWebhookController;
 use App\Http\Controllers\Api\TrendingVideoController;
 use App\Http\Controllers\Api\UserApiController;
 use App\Http\Controllers\Api\SubcategoryController;
+use App\Http\Controllers\Api\NotificationController;
+
 
 
 
@@ -52,7 +54,7 @@ Route::delete('/users/{id}', [UserApiController::class, 'destroy']);
  Route::post('/user/device-token', [UserApiController::class, 'saveDeviceToken']);
  Route::get('/watch-history', [VideoController::class, 'watchHistory']);
  Route::post('/watch-history', [VideoController::class, 'storeWatchHistory']);
-
+Route::get('/notifications', [NotificationController::class, 'getnotify']);
 
 });
 
