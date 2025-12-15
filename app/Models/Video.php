@@ -45,4 +45,9 @@ public function season()
 {
     return $this->belongsTo(Season::class);
 }
+
+public function bookmarks()
+{
+    return $this->hasMany(\App\Models\Bookmark::class);
+}
 }
