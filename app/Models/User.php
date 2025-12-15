@@ -80,4 +80,9 @@ public function isBanned()
     {
         return $this->status === 'banned';
     }
+
+    public function bookmarks()
+{
+    return $this->hasMany(\App\Models\Bookmark::class);
+}
 }

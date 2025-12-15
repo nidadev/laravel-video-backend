@@ -43,7 +43,9 @@ Route::middleware(['jwt.auth'])->group(function () {
 
 Route::post('/google-pay-purchase', [VideoController::class, 'googlePayPurchase']);
 
-   
+   Route::post('/bookmarks/toggle', [\App\Http\Controllers\Api\BookmarkController::class, 'toggle']);
+    Route::get('/bookmarks', [\App\Http\Controllers\Api\BookmarkController::class, 'index']);
+
 
      Route::get('/users', [UserApiController::class, 'index']);
 Route::get('/users/{id}', [UserApiController::class, 'show']);
