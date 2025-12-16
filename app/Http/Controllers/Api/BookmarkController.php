@@ -16,6 +16,7 @@ class BookmarkController extends Controller
     {
         $request->validate([
             'video_id' => 'required|exists:videos,id',
+            'season_id' => 'nullable|exists:seasons,id',
         ]);
 
         $user = $request->user();
@@ -29,7 +30,9 @@ class BookmarkController extends Controller
 
             return response()->json([
                 'message' => 'Bookmark removed',
-                'data' => ['bookmarked' => false],
+                'data' => ['bookmarked' => false,
+            'video_id' => $request->video_id,
+                'season_id' => $request->season_id],
                 'success' => true,
             ]);
         }
@@ -41,7 +44,9 @@ class BookmarkController extends Controller
 
         return response()->json([
             'message' => 'Bookmark added',
-            'data' => ['bookmarked' => true],
+            'data' => ['bookmarked' => true,
+        'video_id' => $request->video_id,
+                'season_id' => $request->season_id],
             'success' => true,
         ]);
     }
