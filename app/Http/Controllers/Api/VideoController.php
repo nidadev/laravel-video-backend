@@ -12,7 +12,7 @@ use App\Models\Category;
 use App\Models\Season;
 use App\Models\Plan;
 use App\Models\GooglePayPurchase;
-
+use App\Models\Bookmark;
 use App\Models\WatchHistory;
 
 
@@ -273,19 +273,35 @@ public function destroy($id)
         ]);
     }
 
+
 public function show(Request $request, $id)
 {
     try {
         $video = Video::with('files')->findOrFail($id);
         $user = $request->user();
 
-        // Check ads
+        /* ------------------------------------
+           📌 Check if video is bookmarked
+        ------------------------------------ */
+        $isBookmarked = 0;
+
+        if ($user) {
+            $isBookmarked = Bookmark::where('user_id', $user->id)
+                ->where('video_id', $video->id)
+                ->exists() ? 1 : 0;
+        }
+
+        /* ------------------------------------
+           📺 Ads logic
+        ------------------------------------ */
         $ads_enabled = true;
         if ($user && method_exists($user, 'hasActiveSubscription') && $user->hasActiveSubscription()) {
             $ads_enabled = false;
         }
 
-        // Filter by season_id if provided
+        /* ------------------------------------
+           🎬 Filter episodes by season (optional)
+        ------------------------------------ */
         $seasonId = $request->query('season_id');
         $episodes = $video->files;
 
@@ -293,30 +309,35 @@ public function show(Request $request, $id)
             $episodes = $episodes->where('season_id', $seasonId);
         }
 
-        // Get seasons of this video's episodes
+        /* ------------------------------------
+           📦 Seasons list
+        ------------------------------------ */
         $seasonIds = $video->files->pluck('season_id')->unique()->filter();
 
         $seasons = Season::whereIn('id', $seasonIds)
             ->get(['id', 'name']);
 
-        // Format response
+        /* ------------------------------------
+           ✅ Response
+        ------------------------------------ */
         $data = [
             'video' => [
+                'id' => $video->id,
                 'title' => $video->title,
                 'description' => $video->description,
                 'thumbnail' => $video->thumbnail,
                 'year_of_published' => $video->year_of_published,
+                'is_bookmarked' => $isBookmarked, // 🔥 ADDED
             ],
             'ads_enabled' => $ads_enabled,
             'seasons' => $seasons,
-
             'episodes' => $episodes->map(function ($file) {
                 return [
                     'episode_id' => $file->id,
                     'title' => $file->variant,
                     'season_id' => $file->season_id,
                     'url' => $file->file_url,
-                    'thumbnail' => $file->image,   // <-- episode image added
+                    'thumbnail' => $file->image,
                 ];
             }),
         ];
@@ -339,6 +360,7 @@ public function show(Request $request, $id)
         ], 500);
     }
 }
+
 
 
 public function fetchByCategory(Request $request)
