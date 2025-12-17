@@ -138,7 +138,7 @@ public function updateProfile(Request $request)
         $path = $request->file('profile_image')
                         ->store('profiles', 'public'); // storage/app/public/profiles
 
-        $user->profile_image = $path;
+        $user->profile_image = asset('storage/' . $path);
     }
 
     $user->save();
