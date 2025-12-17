@@ -57,6 +57,8 @@ Route::delete('/users/{id}', [UserApiController::class, 'destroy']);
  Route::get('/watch-history', [VideoController::class, 'watchHistory']);
  Route::post('/watch-history', [VideoController::class, 'storeWatchHistory']);
 Route::get('/notifications', [NotificationController::class, 'getnotify']);
+Route::get('/videos/{id}', [VideoController::class, 'show']);
+
 
 });
 
@@ -85,7 +87,6 @@ Route::get('/categories/{id}/subcategories', [SubcategoryController::class, 'byC
 Route::post('/subcategories', [SubcategoryController::class, 'store']);
 
 Route::get('/videos', [VideoController::class, 'index']);
-Route::get('/videos/{id}', [VideoController::class, 'show']);
 Route::get('/videos-by-category', [VideoController::class, 'fetchByCategory']);
 Route::post('/videos/{id}/like', [VideoController::class, 'like']);
 
