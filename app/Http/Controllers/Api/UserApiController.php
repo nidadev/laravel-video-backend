@@ -107,7 +107,7 @@ class UserApiController extends Controller
         ], 200);
     }
 
-public function updateProfile(Request $request)
+public function updateProfile2(Request $request)
 {
     $user = $request->user();
 
@@ -157,6 +157,60 @@ public function updateProfile(Request $request)
         'success' => true,
     ]);
 }
+
+public function updateProfile(Request $request)
+{
+    $user = $request->user();
+
+    $request->validate([
+        'name' => 'sometimes|string|max:255',
+        'email' => 'sometimes|email|max:255|unique:users,email,' . $user->id,
+        'profile_image' => 'sometimes|image|mimes:jpg,jpeg,png|max:2048',
+    ]);
+
+    if ($request->filled('name')) {
+        $user->name = $request->name;
+    }
+
+    if ($request->filled('email')) {
+        $user->email = $request->email;
+    }
+
+    /* ----------------------------------
+       📸 Handle Profile Image Upload
+    ---------------------------------- */
+    if ($request->hasFile('profile_image')) {
+
+        // delete old image (optional)
+        if ($user->profile_image) {
+            $oldPath = str_replace(asset('storage/') . '/', '', $user->profile_image);
+            if (Storage::disk('public')->exists($oldPath)) {
+                Storage::disk('public')->delete($oldPath);
+            }
+        }
+
+        // store new image
+        $path = $request->file('profile_image')->store('profiles', 'public');
+
+        // ✅ STORE FULL URL IN DB
+        $user->profile_image = asset('storage/' . $path);
+    }
+
+    $user->save();
+
+    return response()->json([
+        'message' => 'Profile updated successfully',
+        'data' => [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'profile_image' => $user->profile_image, // already full URL
+        ],
+        'response' => 200,
+        'success' => true,
+    ]);
+}
+
 
 
     // app/Http/Controllers/Api/UserApiController.php
