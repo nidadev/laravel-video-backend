@@ -86,7 +86,7 @@ public function sendOtp(Request $request)
 
 
 
-public function verifyOtp(Request $request)
+public function verifyOtp2(Request $request)
 {
     $request->validate([
         'email' => 'required|email',
@@ -181,6 +181,98 @@ public function verifyOtp(Request $request)
 }
 
 
+public function verifyOtp(Request $request)
+{
+    $request->validate([
+        'email' => 'required|email',
+        'otp'   => 'required'
+    ]);
 
+    $email = $request->email;
+
+    // ✅ Validate OTP
+    $otpRecord = Otp::where('email', $email)
+        ->where('otp_code', $request->otp)
+        ->latest()
+        ->first();
+
+    if (!$otpRecord || $otpRecord->isExpired()) {
+        return response()->json([
+            'message' => 'Invalid or expired OTP',
+            'data' => [],
+            'response' => 401,
+            'success' => false,
+        ]);
+    }
+
+    /* ------------------------------------
+       👤 Find or Create User
+    ------------------------------------ */
+    $user = User::where('email', $email)->first();
+    $isNewUser = false;
+
+    if (!$user) {
+        $isNewUser = true;
+
+        $user = User::create([
+            'email' => $email,
+            'name' => 'User_' . Str::random(5),
+            'password' => bcrypt(Str::random(10)),
+        ]);
+    }
+
+    // ❌ Delete OTPs
+    Otp::where('email', $email)->delete();
+
+    /* ------------------------------------
+       🔐 JWT Token
+    ------------------------------------ */
+    JWTAuth::factory()->setTTL(10080); // 7 days
+    $token = JWTAuth::fromUser($user);
+
+    /* ------------------------------------
+       📌 Subscription Logic (IMPORTANT FIX)
+    ------------------------------------ */
+
+    // 1️⃣ Try to get active subscription
+    $activeSubscription = Subscription::with('plan')
+        ->where('user_id', $user->id)
+        ->active()
+        ->first();
+
+    // 2️⃣ If NO active subscription → give FREE plan
+    if (!$activeSubscription) {
+
+        $freePlan = Plan::where('name', 'Free')->first();
+
+        if ($freePlan) {
+            $activeSubscription = Subscription::create([
+                'user_id'    => $user->id,
+                'plan_id'    => $freePlan->id,
+                'start_date' => now(),
+                'end_date'   => now()->addDays(7), // or null for lifetime free
+                'status'     => 'active',
+            ]);
+
+            $activeSubscription->load('plan');
+        }
+    }
+
+    /* ------------------------------------
+       ✅ RESPONSE
+    ------------------------------------ */
+    return response()->json([
+        'message' => 'OTP verified successfully',
+        'data' => [
+            'token' => $token,
+            'token_type' => 'bearer',
+            'expires_in' => JWTAuth::factory()->getTTL() * 60,
+            'user' => $user,
+            'subscription' => $activeSubscription, // ✅ NEVER NULL NOW
+        ],
+        'response' => 200,
+        'success' => true,
+    ]);
+}
 
 }
