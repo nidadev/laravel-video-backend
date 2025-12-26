@@ -6,7 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class WatchHistory extends Model
 {
-    protected $fillable = ['user_id', 'video_file_id', 'watched_seconds'];
+    protected $fillable = ['user_id', 'video_file_id', 'watched_seconds',
+ 'episode_title',
+        'episode_release_date'];
 
     public function user()
     {

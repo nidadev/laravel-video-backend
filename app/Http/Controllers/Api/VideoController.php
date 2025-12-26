@@ -933,22 +933,39 @@ public function storeWatchHistory(Request $request)
 
     $user = $request->user();
 
+    // 🔍 Get episode info
+    $episode = \App\Models\VideoFile::findOrFail($request->video_file_id);
+
     $watchHistory = \App\Models\WatchHistory::updateOrCreate(
         [
             'user_id' => $user->id,
-            'video_file_id' => $request->video_file_id,
+            'video_file_id' => $episode->id,
         ],
         [
             'watched_seconds' => $request->watched_seconds ?? 0,
+            'episode_title' => $episode->variant ?? $episode->title ?? null,
+            'episode_release_date' => $episode->release_date ?? null,
         ]
     );
 
     return response()->json([
         'message' => 'Watch history recorded successfully',
-        'data' => $watchHistory,
-        'success' => true
+        'data' => [
+            // 🔹 existing data
+            'id' => $watchHistory->id,
+            'episode_id' => $episode->id,
+            'episode_title' => $watchHistory->episode_title,
+            'episode_release_date' => $watchHistory->episode_release_date,
+            'watched_seconds' => $watchHistory->watched_seconds,
+
+            // 🔹 newly added fields
+            'episode_url' => $episode->file_url ?? null,
+            'episode_duration' => $episode->duration ?? null,
+        ],
+        'success' => true,
     ]);
 }
+
 
 
 
