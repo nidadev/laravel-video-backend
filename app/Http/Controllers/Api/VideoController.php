@@ -933,8 +933,18 @@ public function storeWatchHistory(Request $request)
 
     $user = $request->user();
 
-    // 🔍 Get episode info
-    $episode = \App\Models\VideoFile::findOrFail($request->video_file_id);
+    // Episode
+    $episode = \App\Models\VideoFile::with('video')->findOrFail($request->video_file_id);
+
+    // Get release date from Video
+    $releaseDate = null;
+    if ($episode->video && $episode->video->year_of_published) {
+        $releaseDate = \Carbon\Carbon::createFromDate(
+            $episode->video->year_of_published,
+            1,
+            1
+        )->format('Y-m-d');
+    }
 
     $watchHistory = \App\Models\WatchHistory::updateOrCreate(
         [
@@ -943,28 +953,28 @@ public function storeWatchHistory(Request $request)
         ],
         [
             'watched_seconds' => $request->watched_seconds ?? 0,
-            'episode_title' => $episode->variant ?? $episode->title ?? null,
-            'episode_release_date' => $episode->release_date ?? null,
+            'episode_title' => $episode->variant ?? 'Episode',
+            'episode_release_date' => $releaseDate,
+            'episode_url' => $episode->file_url,
+            'episode_duration' => $episode->duration,
         ]
     );
 
     return response()->json([
         'message' => 'Watch history recorded successfully',
         'data' => [
-            // 🔹 existing data
             'id' => $watchHistory->id,
             'episode_id' => $episode->id,
             'episode_title' => $watchHistory->episode_title,
             'episode_release_date' => $watchHistory->episode_release_date,
+            'episode_url' => $episode->file_url,
+            'episode_duration' => $episode->duration,
             'watched_seconds' => $watchHistory->watched_seconds,
-
-            // 🔹 newly added fields
-            'episode_url' => $episode->file_url ?? null,
-            'episode_duration' => $episode->duration ?? null,
         ],
         'success' => true,
     ]);
 }
+
 
 
 
