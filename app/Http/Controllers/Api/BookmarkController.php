@@ -59,7 +59,7 @@ class BookmarkController extends Controller
         $user = $request->user();
 
         $bookmarks = Bookmark::with([
-                'video:id,title,description,thumbnail,category_id,subcategory_id,season_id'
+                'video:id,title,description,thumbnail,category_id,subcategory_id,season_id,year_of_published'
             ])
             ->where('user_id', $user->id)
             ->latest()
@@ -67,6 +67,7 @@ class BookmarkController extends Controller
             ->map(function ($item) {
                 return [
                     'video_id' => $item->video->id,
+                    'year_of_published' => $item->video->year_of_published, 
                     'title' => $item->video->title,
                     'description' => $item->video->description,
                     'thumbnail' => $item->video->thumbnail,
