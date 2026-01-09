@@ -32,7 +32,18 @@
               <label>Description</label>
               <textarea name="description" class="form-control" rows="3">{{ $video->description }}</textarea>
           </div>
-
+<div class="mb-3">
+    <label>Year of Published</label>
+    <input
+        type="number"
+        name="year_of_published"
+        class="form-control"
+        min="1900"
+        max="{{ date('Y') }}"
+        value="{{ old('year_of_published', $video->year_of_published) }}"
+        required
+    >
+</div>
           <div class="mb-3">
               <label>Category</label>
               <select name="category_id" class="form-select" required>

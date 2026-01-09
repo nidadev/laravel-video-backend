@@ -181,7 +181,8 @@ class VideoController extends Controller
           'category_id' => 'filled|exists:categories,id',
         'status' => 'required|in:processing,ready,published,disabled',
         'thumbnail' => 'nullable|image',
-        'video_files.*' => 'file|mimetypes:video/mp4,video/mpeg,video/quicktime'
+        'video_files.*' => 'file|mimetypes:video/mp4,video/mpeg,video/quicktime',
+         'year_of_published' => 'required|integer|min:1900|max:' . date('Y'),
     ]);
 
      if ($request->hasFile('thumbnail')) {
@@ -229,6 +230,7 @@ class VideoController extends Controller
         'category_id' => $request->category_id,
         'description' => $request->description ?? $video->description,
         'status' => $request->status ?? $video->status,
+        'year_of_published' => $request->year_of_published, // 🔥 ADDED
     ]);
 
     return response()->json([
