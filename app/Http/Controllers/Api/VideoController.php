@@ -815,10 +815,104 @@ public function search(Request $request)
 }
 
 
-
-
-
 public function googlePayPurchase(Request $request)
+{
+    $request->validate([
+        'plan_id' => 'required|exists:plans,id',
+        'googlepay_transaction_id' => 'required|string',
+        'googlepay_email' => 'required|email',
+        'payment_response' => 'required|array',
+    ]);
+
+    $user = $request->user();
+    $plan = Plan::findOrFail($request->plan_id);
+
+    try {
+        /* ------------------------------------
+           💳 Save Google Pay Purchase
+        ------------------------------------ */
+        $payment = \App\Models\GooglePayPurchase::create([
+            'user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'googlepay_transaction_id' => $request->googlepay_transaction_id,
+            'googlepay_email' => $request->googlepay_email,
+            'payment_response' => json_encode($request->payment_response),
+            'status' => 'completed',
+        ]);
+
+        /* ------------------------------------
+           ⏱ Determine Subscription Duration
+        ------------------------------------ */
+        $startDate = now();
+
+        switch (strtolower($plan->type)) {
+            case 'weekly':
+                $endDate = $startDate->copy()->addWeek();
+                break;
+            case 'monthly':
+                $endDate = $startDate->copy()->addMonth();
+                break;
+            case 'yearly':
+                $endDate = $startDate->copy()->addYear();
+                break;
+            default:
+                $endDate = $startDate->copy()->addDays(7);
+        }
+
+        /* ------------------------------------
+           🔄 Deactivate Existing Subscription
+        ------------------------------------ */
+        \App\Models\Subscription::where('user_id', $user->id)
+            ->where('status', 'active')
+            ->update(['status' => 'expired']);
+
+        /* ------------------------------------
+           📌 Create New Subscription
+        ------------------------------------ */
+        $subscription = \App\Models\Subscription::create([
+            'user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'status' => 'active',
+        ]);
+
+        // Load plan relationship
+        $subscription->load('plan');
+
+        return response()->json([
+            'message' => 'Google Pay purchase recorded and subscription created successfully',
+            'data' => [
+                'payment' => $payment,
+                'subscription' => [
+                    'id' => $subscription->id,
+                    'plan' => $subscription->plan->name,
+                    'type' => $subscription->plan->type,
+                    'price' => $subscription->plan->price,
+                    'start_date' => $subscription->start_date->toDateTimeString(),
+                    'end_date' => $subscription->end_date->toDateTimeString(),
+                    'status' => $subscription->status,
+                ],
+            ],
+            'response' => 200,
+            'success' => true,
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Google Pay purchase or subscription failed: ' . $e->getMessage());
+
+        return response()->json([
+            'message' => 'Failed to record Google Pay purchase or create subscription',
+            'data' => ['error' => $e->getMessage()],
+            'response' => 500,
+            'success' => false,
+        ]);
+    }
+}
+
+
+
+public function googlePayPurchase2(Request $request)
 {
     $request->validate([
         'plan_id' => 'required|exists:plans,id',
