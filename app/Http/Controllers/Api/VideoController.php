@@ -947,12 +947,17 @@ public function googlePayPurchase(Request $request)
             'status' => 'completed'
         ]);
 
-        // 2️⃣ Expire old subscriptions
+        // 2️⃣ Delete all expired subscriptions of this user
+        Subscription::where('user_id', $user->id)
+            ->where('status', 'expired')
+            ->delete();
+
+        // 3️⃣ Expire any currently active subscriptions
         Subscription::where('user_id', $user->id)
             ->where('status', 'active')
             ->update(['status' => 'expired']);
 
-        // 3️⃣ Create new subscription
+        // 4️⃣ Create new subscription
         $subscription = Subscription::create([
             'user_id' => $user->id,
             'plan_id' => $plan->id,
@@ -963,7 +968,7 @@ public function googlePayPurchase(Request $request)
 
         $subscription->load('plan');
 
-        // 4️⃣ Return response
+        // 5️⃣ Return response
         return response()->json([
             'message' => 'Google Pay subscription created successfully',
             'data' => [
@@ -988,7 +993,6 @@ public function googlePayPurchase(Request $request)
         ], 500);
     }
 }
-
 
 
 public function watchHistory(Request $request)
