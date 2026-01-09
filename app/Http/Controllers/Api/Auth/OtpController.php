@@ -86,20 +86,21 @@ public function sendOtp(Request $request)
 
 
 
-public function verifyOtp2(Request $request)
+
+public function verifyOtp(Request $request)
 {
     $request->validate([
         'email' => 'required|email',
-        'otp' => 'required'
+        'otp'   => 'required'
     ]);
 
     $email = $request->email;
 
-    // Validate OTP
+    // ✅ Validate OTP
     $otpRecord = Otp::where('email', $email)
-                    ->where('otp_code', $request->otp)
-                    ->latest()
-                    ->first();
+        ->where('otp_code', $request->otp)
+        ->latest()
+        ->first();
 
     if (!$otpRecord || $otpRecord->isExpired()) {
         return response()->json([
@@ -110,16 +111,14 @@ public function verifyOtp2(Request $request)
         ]);
     }
 
-    /* ---------------------------------------------------
-       👤 Check if user exists
-    --------------------------------------------------- */
+    /* ------------------------------------
+       👤 Find or Create User
+    ------------------------------------ */
     $user = User::where('email', $email)->first();
     $isNewUser = false;
 
-    // If not exists -> create new user
     if (!$user) {
         $isNewUser = true;
-
         $user = User::create([
             'email' => $email,
             'name' => 'User_' . Str::random(5),
@@ -127,45 +126,45 @@ public function verifyOtp2(Request $request)
         ]);
     }
 
-    // Delete all OTPs
+    // ❌ Delete OTPs
     Otp::where('email', $email)->delete();
 
-    /* ---------------------------------------------------
-       🔐 Generate JWT Token
-    --------------------------------------------------- */
-    JWTAuth::factory()->setTTL(10080);
+    /* ------------------------------------
+       🔐 JWT Token
+    ------------------------------------ */
+    JWTAuth::factory()->setTTL(10080); // 7 days
     $token = JWTAuth::fromUser($user);
 
-    /* ---------------------------------------------------
+    /* ------------------------------------
        📌 Subscription Handling
-    --------------------------------------------------- */
+    ------------------------------------ */
 
-    if ($isNewUser) {
-        /** NEW USER = give FREE subscription */
+    // 1️⃣ Get latest active subscription (paid or free)
+    $activeSubscription = Subscription::with('plan')
+        ->where('user_id', $user->id)
+        ->where('status', 'active')
+        ->where('end_date', '>=', now())
+        ->latest('end_date')
+        ->first();
 
-        $freePlan = Plan::where('name', 'Free')->first(); // adjust name if needed
-
-        // Create free subscription for new user
-        $activeSubscription = Subscription::create([
-            'user_id' => $user->id,
-            'plan_id' => $freePlan->id,
-            'start_date' => now(),
-            'end_date' => now()->addDays(7),
-            'status' => 'active',
-        ]);
-
-        // Load plan relationship
-        $activeSubscription->load('plan');
-
-    } else {
-        /** EXISTING USER = load existing active subscription */
-
-        $activeSubscription = Subscription::with('plan')
-                            ->where('user_id', $user->id)
-                            ->active()
-                            ->first();
+    // 2️⃣ If no active subscription exists → give FREE plan
+    if (!$activeSubscription) {
+        $freePlan = Plan::where('name', 'Free')->first();
+        if ($freePlan) {
+            $activeSubscription = Subscription::create([
+                'user_id' => $user->id,
+                'plan_id' => $freePlan->id,
+                'start_date' => now(),
+                'end_date' => now()->addDays(7), // Free trial 7 days
+                'status' => 'active',
+            ]);
+            $activeSubscription->load('plan');
+        }
     }
 
+    /* ------------------------------------
+       ✅ RESPONSE
+    ------------------------------------ */
     return response()->json([
         'message' => 'OTP verified successfully',
         'data' => [
@@ -181,7 +180,7 @@ public function verifyOtp2(Request $request)
 }
 
 
-public function verifyOtp(Request $request)
+public function verifyOtp2(Request $request)
 {
     $request->validate([
         'email' => 'required|email',
