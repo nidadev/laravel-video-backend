@@ -20,7 +20,7 @@ use App\Mail\SendOtpMail;
 class OtpController extends Controller
 {
     //
-public function sendOtp(Request $request)
+public function sendOtp1(Request $request)
 {
     try {
         $request->validate([
@@ -82,6 +82,95 @@ public function sendOtp(Request $request)
         'success' => true,
     ]);
 }
+
+public function sendOtp(Request $request)
+{
+    try {
+        $request->validate([
+            'email' => 'required|email'
+        ]);
+    } catch (ValidationException $e) {
+        return response()->json([
+            'message' => $e->validator->errors()->first(),
+            'data' => [],
+            'response' => 422,
+            'success' => false,
+        ], 422);
+    }
+
+    $email = $request->email;
+
+    // ✅ DEMO ACCOUNT
+    if ($email === 'demo@gmail.com') {
+        Otp::where('email', $email)->delete(); // clear old OTPs
+
+        Otp::create([
+            'email' => $email,
+            'otp_code' => 1234,
+            'expires_at' => now()->addYears(1) // never expire for demo
+        ]);
+
+        return response()->json([
+            'message' => 'Demo OTP generated',
+            'data' => [
+                'email' => $email,
+                'otp' => 1234
+            ],
+            'response' => 200,
+            'success' => true,
+        ]);
+    }
+
+    // 🔐 Rate limit
+    $recent = Otp::where('email', $email)
+        ->where('created_at', '>=', now()->subMinutes(2))
+        ->count();
+
+    if ($recent >= 3) {
+        return response()->json([
+            'message' => 'Too many OTP requests. Please wait a moment.',
+            'data' => [],
+            'response' => 429,
+            'success' => false,
+        ]);
+    }
+
+    // Generate OTP
+    $otp = rand(1000, 9999);
+
+    // Delete old OTPs
+    Otp::where('email', $email)->delete();
+
+    Otp::create([
+        'email' => $email,
+        'otp_code' => $otp,
+        'expires_at' => now()->addMinutes(10),
+    ]);
+
+    // Send email
+    try {
+        Mail::to($email)->send(new SendOtpMail($otp));
+    } catch (\Exception $e) {
+        \Log::error("OTP Mail Error: " . $e->getMessage());
+
+        return response()->json([
+            'message' => 'OTP created but email failed. Please contact support.',
+            'data' => [],
+            'response' => 500,
+            'success' => false,
+        ]);
+    }
+
+    return response()->json([
+        'message' => 'OTP sent successfully to your email',
+        'data' => [
+            'email' => $email
+        ],
+        'response' => 200,
+        'success' => true,
+    ]);
+}
+
 
 
 
