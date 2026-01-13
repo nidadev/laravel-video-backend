@@ -20,7 +20,7 @@ use App\Mail\SendOtpMail;
 class OtpController extends Controller
 {
     //
-public function sendOtp1(Request $request)
+public function sendOtp(Request $request)
 {
     try {
         $request->validate([
@@ -83,7 +83,7 @@ public function sendOtp1(Request $request)
     ]);
 }
 
-public function sendOtp(Request $request)
+public function sendOtp2(Request $request)
 {
     try {
         $request->validate([
