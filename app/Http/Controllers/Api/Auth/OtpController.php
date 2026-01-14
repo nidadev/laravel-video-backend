@@ -36,7 +36,7 @@ public function sendOtp(Request $request)
     }
 
     $email = $request->email;
-    if ($email === 'demo@gmail.com') {
+    if ($email == 'demo@gmail.com') {
         Otp::where('email', $email)->delete(); // clear old OTPs
 
         Otp::create([
@@ -49,7 +49,7 @@ public function sendOtp(Request $request)
             'message' => 'Demo OTP generated',
             'data' => [
                 'email' => $email,
-                'otp' => 1234
+                'otp_debug' => 1234
             ],
             'response' => 200,
             'success' => true,
