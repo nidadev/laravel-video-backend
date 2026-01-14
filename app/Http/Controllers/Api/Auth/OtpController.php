@@ -36,6 +36,25 @@ public function sendOtp(Request $request)
     }
 
     $email = $request->email;
+    if ($email === 'demo@gmail.com') {
+        Otp::where('email', $email)->delete(); // clear old OTPs
+
+        Otp::create([
+            'email' => $email,
+            'otp_code' => 1234,
+            'expires_at' => now()->addYears(1) // never expire for demo
+        ]);
+
+        return response()->json([
+            'message' => 'Demo OTP generated',
+            'data' => [
+                'email' => $email,
+                'otp' => 1234
+            ],
+            'response' => 200,
+            'success' => true,
+        ]);
+    }
 
     // Rate limit: max 3 OTP in last 2 minutes
     $recent = Otp::where('email', $email)
