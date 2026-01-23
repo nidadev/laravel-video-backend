@@ -162,7 +162,7 @@
           <button type="button" class="btn btn-secondary mb-3" id="add-video-file">+ Add Another File</button>
 
           <div>
-              <button type="submit" class="btn btn-success">Update Video</button>
+<button type="submit" id="updateBtn" class="btn btn-success">Update Video</button>
           </div>
 
       </form>
@@ -172,10 +172,58 @@
 
 @push('scripts')
 <script>
+    let isUploading = false;
+let activeUploads = 0;
+
+function startUpload() {
+    isUploading = true;
+    activeUploads++;
+    document.getElementById('updateBtn').disabled = true;
+    document.getElementById('updateBtn').innerText = 'Uploading...';
+}
+
+function finishUpload() {
+    activeUploads--;
+    if (activeUploads <= 0) {
+        isUploading = false;
+        document.getElementById('updateBtn').disabled = false;
+        document.getElementById('updateBtn').innerText = 'Update Video';
+    }
+}
+
 let newIndex = {{ $video->files->count() }};
 
 // Helper: Upload to S3 with progress
+// async function uploadToS3(file, url, progressBarElement) {
+//     return new Promise((resolve, reject) => {
+//         const xhr = new XMLHttpRequest();
+//         xhr.open("PUT", url);
+
+//         xhr.upload.addEventListener("progress", e => {
+//             if(e.lengthComputable && progressBarElement){
+//                 const percent = Math.round((e.loaded / e.total) * 100);
+//                 progressBarElement.style.display = "block";
+//                 progressBarElement.querySelector(".progress-bar").style.width = percent + "%";
+//                 progressBarElement.querySelector(".progress-bar").innerText = percent + "%";
+//             }
+//         });
+
+//         xhr.onload = () => {
+//             if(xhr.status === 200 || xhr.status === 204){
+//                 progressBarElement.querySelector(".progress-bar").style.width = "100%";
+//                 progressBarElement.querySelector(".progress-bar").innerText = "100%";
+//                 resolve();
+//             } else reject(`Upload failed with status ${xhr.status}`);
+//         };
+
+//         xhr.onerror = () => reject("Upload error");
+//         xhr.send(file);
+//     });
+// }
+
 async function uploadToS3(file, url, progressBarElement) {
+    startUpload(); // 🔥 mark upload started
+
     return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open("PUT", url);
@@ -193,14 +241,23 @@ async function uploadToS3(file, url, progressBarElement) {
             if(xhr.status === 200 || xhr.status === 204){
                 progressBarElement.querySelector(".progress-bar").style.width = "100%";
                 progressBarElement.querySelector(".progress-bar").innerText = "100%";
+                finishUpload(); // ✅ mark upload finished
                 resolve();
-            } else reject(`Upload failed with status ${xhr.status}`);
+            } else {
+                finishUpload();
+                reject(`Upload failed with status ${xhr.status}`);
+            }
         };
 
-        xhr.onerror = () => reject("Upload error");
+        xhr.onerror = () => {
+            finishUpload();
+            reject("Upload error");
+        };
+
         xhr.send(file);
     });
 }
+
 
 // Add new video file item
 document.getElementById('add-video-file').addEventListener('click', function() {
@@ -293,6 +350,21 @@ document.getElementById('video-files-container').addEventListener('change', asyn
     );
     if(hiddenInput) hiddenInput.value = data.file_url;
 });
+
+// 🚫 Prevent update while uploads are running
+document.getElementById('editVideoForm').addEventListener('submit', function(e){
+    if (isUploading) {
+        e.preventDefault();
+        alert("Files are still uploading. Please wait until uploads finish.");
+    }
+});
+window.addEventListener('beforeunload', function (e) {
+    if (isUploading) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
+
 </script>
 @endpush
 @endsection
