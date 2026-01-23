@@ -108,13 +108,26 @@
 
     <button type="button" class="btn btn-secondary mb-3" id="add-video-file">+ Add Another File</button>
     <div id="progressContainer"></div>
-    <button type="submit" class="btn btn-success mt-3">Upload All</button>
+<button type="submit" id="submitBtn" class="btn btn-success mt-3">Upload All</button>
   </form>
 </div>
 
 @push('scripts')
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
+  let totalUploads = 0;
+let completedUploads = 0;
+let isUploading = false;
+
+function updateUploadState(start = false) {
+    if (start) {
+        isUploading = true;
+        $('#submitBtn').prop('disabled', true).text('Uploading...');
+    } else if (completedUploads >= totalUploads) {
+        isUploading = false;
+        $('#submitBtn').prop('disabled', false).text('Upload All');
+    }
+}
 $(document).ready(function() {
   // Load subcategories dynamically
   $('#category-select').on('change', function() {
@@ -148,6 +161,12 @@ $('#video-files-container').on('click','.remove-file-item', function() {
 $('#presignedUploadForm').on('submit', async function(e){
   e.preventDefault();
 
+if (isUploading) {
+    alert("Files are still uploading. Please wait until uploads finish.");
+    return;
+}
+
+
   const title = $('[name="title"]').val();
   const description = $('[name="description"]').val();
   const category_id = $('[name="category_id"]').val();
@@ -162,6 +181,23 @@ $('#presignedUploadForm').on('submit', async function(e){
   const uploadedVideos = [];
   const progressContainer = $('#progressContainer');
   progressContainer.html('');
+
+
+  totalUploads = 0;
+completedUploads = 0;
+
+// Count thumbnail
+if (thumbnail) totalUploads++;
+
+// Count each video file + image (if exists)
+videoItems.each(function(){
+    const video = $(this).find('.video-file')[0].files[0];
+    const image = $(this).find('.image-file')[0].files[0];
+    if(video) totalUploads++;
+    if(image) totalUploads++;
+});
+
+updateUploadState(true);
 
   // Upload main thumbnail
   let thumbnailUrl = null;
@@ -239,10 +275,28 @@ $('#presignedUploadForm').on('submit', async function(e){
 });
 
 // S3 upload function
-async function uploadFileToS3(file,url,progressBar){
+// async function uploadFileToS3(file,url,progressBar){
+//   return new Promise((resolve,reject)=>{
+//     const xhr = new XMLHttpRequest();
+//     xhr.open('PUT', url);
+//     xhr.upload.addEventListener('progress', e=>{
+//       if(e.lengthComputable){
+//         const percent = Math.round((e.loaded / e.total)*100);
+//         progressBar.style.width = percent+'%';
+//         progressBar.textContent = `${file.name} - ${percent}%`;
+//       }
+//     });
+//     xhr.onload = ()=>xhr.status===200?resolve():reject(xhr.responseText);
+//     xhr.onerror = ()=>reject('Upload failed');
+//     xhr.send(file);
+//   });
+// }
+
+async function uploadFileToS3(file, url, progressBar){
   return new Promise((resolve,reject)=>{
     const xhr = new XMLHttpRequest();
     xhr.open('PUT', url);
+
     xhr.upload.addEventListener('progress', e=>{
       if(e.lengthComputable){
         const percent = Math.round((e.loaded / e.total)*100);
@@ -250,11 +304,25 @@ async function uploadFileToS3(file,url,progressBar){
         progressBar.textContent = `${file.name} - ${percent}%`;
       }
     });
-    xhr.onload = ()=>xhr.status===200?resolve():reject(xhr.responseText);
+
+    xhr.onload = ()=>{
+      if(xhr.status === 200){
+        completedUploads++;
+        updateUploadState();
+        resolve();
+      } else reject(xhr.responseText);
+    };
+
     xhr.onerror = ()=>reject('Upload failed');
     xhr.send(file);
   });
 }
+window.addEventListener('beforeunload', function (e) {
+    if (isUploading) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
 </script>
 @endpush
 @endsection
