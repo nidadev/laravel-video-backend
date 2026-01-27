@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Storage;
 use Aws\S3\S3Client;
 use App\Models\Season;
 use App\Models\VideoFile;
+use App\Services\MediaConvertService;
 
 
 class VideoController extends Controller
@@ -228,6 +229,78 @@ public function updatePresigned(Request $request, $id)
 }
 
 
+// public function storePresigned(Request $request)
+// {
+//     $request->validate([
+//         'title' => 'required|string|max:255',
+//         'description' => 'nullable|string',
+//         'category_id' => 'required|exists:categories,id',
+//         'subcategory_id' => 'nullable|exists:subcategories,id',
+//         'thumbnail' => 'nullable|string',
+//         'videos' => 'required|array|min:1',
+//         'videos.*.file_url' => 'required|string',
+//         'videos.*.image' => 'nullable|string', // ✅ use database field name
+//         'videos.*.variant' => 'nullable|string|max:255',
+// 'videos.*.season' => 'nullable|exists:seasons,id',
+//         'videos.*.drm' => 'nullable|boolean',
+//         'videos.*.duration' => 'nullable|string|max:50',
+//         'videos.*.original_name' => 'nullable|string',
+//         'videos.*.size' => 'nullable|numeric',
+//         'videos.*.mime' => 'nullable|string',
+//         'year_of_published' => 'nullable|digits:4|integer|min:1900|max:2100',
+//         'season_id' => 'nullable|exists:seasons,id',
+
+
+//     ]);
+
+//     try {
+//         // ✅ Create main Video record with subcategory_id
+//         $video = Video::create([
+//             'title' => $request->title,
+//             'description' => $request->description,
+//             'season_id' => $request->season_id,  
+//             'category_id' => $request->category_id,
+//             'subcategory_id' => $request->subcategory_id,
+//             'thumbnail' => $request->thumbnail,
+//             'status' => 'ready',
+//             'created_by' => auth()->id() ?? auth('admin')->id(),
+//                 'year_of_published' => $request->year_of_published,
+
+//         ]);
+
+//         // ✅ Save uploaded file metadata
+//         foreach ($request->videos as $file) {
+//             $video->files()->create([
+//                 'variant' => $file['variant'] ?? 'Default',
+// 'season_id' => $file['season'] ?? null,
+//                 'file_url' => $file['file_url'],
+//                 'image' => $file['image'] ?? null, // ✅ save in 'image' column
+//                 'manifest_url' => null,
+//                 'drm' => $file['drm'] ?? false,
+//                 'duration' => $file['duration'] ?? null,
+//                 'meta' => json_encode([
+//                     'original_name' => $file['original_name'] ?? null,
+//                     'size' => $file['size'] ?? null,
+//                     'mime' => $file['mime'] ?? null,
+//                 ]),
+//             ]);
+//         }
+
+//         return response()->json([
+//             'success' => true,
+//             'message' => '✅ Video and metadata (including image and season) saved successfully!',
+//             'video_id' => $video->id,
+//         ]);
+
+//     } catch (\Exception $e) {
+//         \Log::error('Presigned store failed: ' . $e->getMessage());
+//         return response()->json([
+//             'success' => false,
+//             'error' => $e->getMessage(),
+//         ], 500);
+//     }
+// }
+
 public function storePresigned(Request $request)
 {
     $request->validate([
@@ -238,9 +311,9 @@ public function storePresigned(Request $request)
         'thumbnail' => 'nullable|string',
         'videos' => 'required|array|min:1',
         'videos.*.file_url' => 'required|string',
-        'videos.*.image' => 'nullable|string', // ✅ use database field name
+        'videos.*.image' => 'nullable|string',
         'videos.*.variant' => 'nullable|string|max:255',
-'videos.*.season' => 'nullable|exists:seasons,id',
+        'videos.*.season' => 'nullable|exists:seasons,id',
         'videos.*.drm' => 'nullable|boolean',
         'videos.*.duration' => 'nullable|string|max:50',
         'videos.*.original_name' => 'nullable|string',
@@ -248,32 +321,36 @@ public function storePresigned(Request $request)
         'videos.*.mime' => 'nullable|string',
         'year_of_published' => 'nullable|digits:4|integer|min:1900|max:2100',
         'season_id' => 'nullable|exists:seasons,id',
-
-
     ]);
 
     try {
-        // ✅ Create main Video record with subcategory_id
         $video = Video::create([
             'title' => $request->title,
             'description' => $request->description,
-            'season_id' => $request->season_id,  
+            'season_id' => $request->season_id,
             'category_id' => $request->category_id,
             'subcategory_id' => $request->subcategory_id,
             'thumbnail' => $request->thumbnail,
-            'status' => 'ready',
+            'status' => 'processing',
             'created_by' => auth()->id() ?? auth('admin')->id(),
-                'year_of_published' => $request->year_of_published,
-
+            'year_of_published' => $request->year_of_published,
         ]);
 
-        // ✅ Save uploaded file metadata
+        $mcService = new \App\Services\MediaConvertService();
+
         foreach ($request->videos as $file) {
-            $video->files()->create([
+            $parsedUrl = parse_url($file['file_url']);
+            $bucket = explode('.', $parsedUrl['host'])[0];
+            $path = ltrim($parsedUrl['path'], '/');
+            $inputS3Url = "s3://{$bucket}/{$path}";
+
+            // create DB record first
+            $videoFile = $video->files()->create([
                 'variant' => $file['variant'] ?? 'Default',
-'season_id' => $file['season'] ?? null,
-                'file_url' => $file['file_url'],
-                'image' => $file['image'] ?? null, // ✅ save in 'image' column
+                'season_id' => $file['season'] ?? null,
+                'mp4_url' => $file['file_url'], // original MP4
+                'file_url' => null,             // will be HLS URL
+                'image' => $file['image'] ?? null,
                 'manifest_url' => null,
                 'drm' => $file['drm'] ?? false,
                 'duration' => $file['duration'] ?? null,
@@ -283,11 +360,27 @@ public function storePresigned(Request $request)
                     'mime' => $file['mime'] ?? null,
                 ]),
             ]);
+
+            // output folder per video_file ID
+            $outputS3Folder = "s3://{$bucket}/hls/{$videoFile->id}/";
+
+            // use original filename with spaces as NameModifier
+            $originalName = pathinfo($file['file_url'], PATHINFO_FILENAME);
+
+            $jobId = $mcService->createHlsJob($inputS3Url, $outputS3Folder, $originalName);
+
+            // HLS URL — DO NOT encode spaces
+            $hlsUrl = "https://{$bucket}.s3.us-east-1.amazonaws.com/hls/{$videoFile->id}/{$originalName}.m3u8";
+
+            $videoFile->update([
+                'file_url' => $hlsUrl,
+                'manifest_url' => $outputS3Folder . "{$originalName}.m3u8"
+            ]);
         }
 
         return response()->json([
             'success' => true,
-            'message' => '✅ Video and metadata (including image and season) saved successfully!',
+            'message' => '✅ Video uploaded and HLS job started!',
             'video_id' => $video->id,
         ]);
 
@@ -299,7 +392,6 @@ public function storePresigned(Request $request)
         ], 500);
     }
 }
-
 
 
 
