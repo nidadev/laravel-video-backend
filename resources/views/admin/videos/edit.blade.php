@@ -332,6 +332,16 @@ document.getElementById('video-files-container').addEventListener('change', asyn
 
     const file = e.target.files[0];
     const type = e.target.classList.contains('video-file') ? 'video' : 'video_image';
+   
+   if(type === 'video'){
+        if(!file.name.toLowerCase().endsWith('.mp4')){
+            alert("Only MP4 files are allowed. Video will be converted to streaming format automatically.");
+            e.target.value = "";
+            return;
+        }
+
+        alert("Video will be converted to streaming format (HLS). Please wait after update.");
+    }
     const progressBar = e.target.closest('.video-file-item').querySelector(
         type === 'video' ? '.video-progress' : '.image-progress'
     );
