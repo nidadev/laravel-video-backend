@@ -586,7 +586,7 @@ public function seeall(Request $request)
         }
 
         // Pagination
-        $videos = $query->paginate(12);
+        $videos = $query->orderBy('created_at', 'asc')->paginate(12);
 
         // FORMAT RESPONSE
         $videos->getCollection()->transform(function ($video) {
