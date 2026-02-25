@@ -137,7 +137,7 @@ public function generatePresignedUrl(Request $request)
     }
 }
 
-public function updatePresigned(Request $request, $id)
+public function updatePresigned2(Request $request, $id)
 {
     $video = Video::with('files')->findOrFail($id);
 
@@ -221,6 +221,121 @@ public function updatePresigned(Request $request, $id)
 
     } catch (\Exception $e) {
         \Log::error('Video update failed: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+}
+
+public function updatePresigned(Request $request, $id)
+{
+    $video = Video::with('files')->findOrFail($id);
+
+    $request->validate([
+        'title' => 'required|string|max:255',
+        'description' => 'nullable|string',
+        'category_id' => 'required|exists:categories,id',
+        'subcategory_id' => 'nullable|exists:subcategories,id',
+        'thumbnail' => 'nullable|string',
+        'videos' => 'required|array|min:1',
+        'videos.*.file_url' => 'required|string',
+        'videos.*.image' => 'nullable|string',
+        'videos.*.variant' => 'nullable|string|max:255',
+        'videos.*.season' => 'nullable|exists:seasons,id',
+        'videos.*.drm' => 'nullable|boolean',
+        'videos.*.duration' => 'nullable|string|max:50',
+        'year_of_published' => 'nullable|digits:4|integer|min:1900|max:2100',
+        'season_id' => 'nullable|exists:seasons,id',
+    ]);
+
+    try {
+
+        $video->update([
+            'title' => $request->title,
+            'description' => $request->description,
+            'season_id' => $request->season_id,
+            'category_id' => $request->category_id,
+            'subcategory_id' => $request->subcategory_id,
+            'thumbnail' => $request->thumbnail,
+            'year_of_published' => $request->year_of_published,
+        ]);
+
+        $mcService = new \App\Services\MediaConvertService();
+
+        foreach ($request->videos as $fileData) {
+
+            $fileUrl = $fileData['file_url'];
+
+            $existingFile = $video->files()
+                ->where('file_url', $fileUrl)
+                ->orWhere('mp4_url', $fileUrl)
+                ->first();
+
+            // 🔥 If MP4 uploaded again → reconvert
+            if (str_ends_with($fileUrl, '.mp4')) {
+
+                $parsedUrl = parse_url($fileUrl);
+                $bucket = explode('.', $parsedUrl['host'])[0];
+                $path = ltrim($parsedUrl['path'], '/');
+                $inputS3Url = "s3://{$bucket}/{$path}";
+
+                if (!$existingFile) {
+                    $existingFile = $video->files()->create([
+                        'variant' => $fileData['variant'] ?? 'Default',
+                        'season_id' => $fileData['season'] ?? null,
+                        'mp4_url' => $fileUrl,
+                        'file_url' => null,
+                        'image' => $fileData['image'] ?? null,
+                        'drm' => $fileData['drm'] ?? false,
+                        'duration' => $fileData['duration'] ?? null,
+                    ]);
+                } else {
+                    $existingFile->update([
+                        'mp4_url' => $fileUrl,
+                    ]);
+                }
+
+                $outputS3Folder = "s3://{$bucket}/hls/{$existingFile->id}/";
+                $originalName = pathinfo($fileUrl, PATHINFO_FILENAME);
+
+                $mcService->createHlsJob($inputS3Url, $outputS3Folder, $originalName);
+
+                $hlsUrl = "https://{$bucket}.s3.us-east-1.amazonaws.com/hls/{$existingFile->id}/{$originalName}.m3u8";
+
+                $existingFile->update([
+                    'file_url' => $hlsUrl,
+                    'manifest_url' => $outputS3Folder . "{$originalName}.m3u8",
+                    'variant' => $fileData['variant'] ?? $existingFile->variant,
+                    'season_id' => $fileData['season'] ?? $existingFile->season_id,
+                    'image' => $fileData['image'] ?? $existingFile->image,
+                    'drm' => $fileData['drm'] ?? $existingFile->drm,
+                    'duration' => $fileData['duration'] ?? $existingFile->duration,
+                ]);
+
+            } else {
+
+                // ✅ If already HLS (.m3u8) just update metadata
+                if ($existingFile) {
+                    $existingFile->update([
+                        'variant' => $fileData['variant'] ?? $existingFile->variant,
+                        'season_id' => $fileData['season'] ?? $existingFile->season_id,
+                        'image' => $fileData['image'] ?? $existingFile->image,
+                        'drm' => $fileData['drm'] ?? $existingFile->drm,
+                        'duration' => $fileData['duration'] ?? $existingFile->duration,
+                    ]);
+                }
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => '✅ Video updated and HLS job started!',
+            'video_id' => $video->id,
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Video update failed: '.$e->getMessage());
         return response()->json([
             'success' => false,
             'error' => $e->getMessage(),
