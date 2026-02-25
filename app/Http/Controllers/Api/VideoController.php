@@ -35,7 +35,7 @@ class VideoController extends Controller
         }
 
         // ✅ Use pagination instead of get()
-        $videos = $query->latest()->paginate(30);
+        $videos = $query->orderBy('created_at', 'asc')->paginate(30);
 
         return response()->json([
             'message' => 'Videos fetched successfully',
