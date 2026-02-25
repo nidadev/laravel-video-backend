@@ -312,6 +312,8 @@ public function show(Request $request, $id)
         if ($seasonId) {
             $episodes = $episodes->where('season_id', $seasonId);
         }
+        // Sort by id ascending
+$episodes = $episodes->sortBy('id')->values();
 
         /* ------------------------------------
            📦 Seasons list
