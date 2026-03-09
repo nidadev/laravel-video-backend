@@ -9,7 +9,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use App\Models\Subscription;
-
+use App\Models\Plan;
 class UserApiController extends Controller
 {
     /**
