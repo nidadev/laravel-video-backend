@@ -26,10 +26,66 @@ class UserApiController extends Controller
         ], 200);
     }
 
+    public function show($id)
+{
+    $user = User::find($id);
+
+    if (!$user) {
+        return response()->json([
+            'message' => 'User not found',
+            'data' => [],
+            'response' => 404,
+            'success' => false,
+        ], 404);
+    }
+
+    /* ------------------------------------
+       📦 Get Active Subscription
+    ------------------------------------ */
+    $activeSubscription = Subscription::with('plan')
+        ->where('user_id', $user->id)
+        ->where('status', 'active')
+        ->where('end_date', '>=', now())
+        ->latest('end_date')
+        ->first();
+
+    /* ------------------------------------
+       🆓 If no active subscription → give FREE plan
+    ------------------------------------ */
+    if (!$activeSubscription) {
+        $freePlan = Plan::where('name', 'Free')->first();
+
+        if ($freePlan) {
+            $activeSubscription = Subscription::create([
+                'user_id' => $user->id,
+                'plan_id' => $freePlan->id,
+                'start_date' => now(),
+                'end_date' => now()->addDays(7),
+                'status' => 'active',
+            ]);
+
+            $activeSubscription->load('plan');
+        }
+    }
+
+    /* ------------------------------------
+       ✅ Response
+    ------------------------------------ */
+    return response()->json([
+        'message' => 'User fetched successfully',
+        'data' => [
+            'user' => $user,
+            'subscription' => $activeSubscription
+        ],
+        'response' => 200,
+        'success' => true,
+    ], 200);
+}
+
     /**
      * Fetch a single user
      */
-    public function show($id)
+    public function show2($id)
     {
         $user = User::find($id);
 
@@ -41,6 +97,8 @@ class UserApiController extends Controller
                 'success' => false,
             ], 404);
         }
+
+
 
         return response()->json([
             'message' => 'User fetched successfully',
