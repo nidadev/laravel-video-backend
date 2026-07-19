@@ -101,5 +101,13 @@ Route::post('/videos', [VideoController::class, 'seeall']);
 Route::post('/payment/webhook', [PaymentWebhookController::class, 'handleWebhook']);
 
 
+/*Route::prefix('users')->group(function(){
+    Route::get('/',[UserController::class,'index']);
+    Route::post('/',[UserController::class,'store']);
+    Route::get('{id}',[])
+
+});*/
+
+
 
 
