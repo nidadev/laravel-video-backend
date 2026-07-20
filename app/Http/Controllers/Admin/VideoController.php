@@ -137,96 +137,7 @@ public function generatePresignedUrl(Request $request)
     }
 }
 
-public function updatePresigned2(Request $request, $id)
-{
-    $video = Video::with('files')->findOrFail($id);
 
-    $request->validate([
-        'title' => 'required|string|max:255',
-        'description' => 'nullable|string',
-        'category_id' => 'required|exists:categories,id',
-        'subcategory_id' => 'nullable|exists:subcategories,id',
-        'thumbnail' => 'nullable|string',
-        'videos' => 'required|array|min:1',
-        'videos.*.file_url' => 'required|string',
-        'videos.*.image' => 'nullable|string',
-        'videos.*.variant' => 'nullable|string|max:255',
-        'videos.*.season' => 'nullable|exists:seasons,id',
-        'videos.*.drm' => 'nullable|boolean',
-        'videos.*.duration' => 'nullable|string|max:50',
-        'videos.*.original_name' => 'nullable|string',
-        'videos.*.size' => 'nullable|numeric',
-        'videos.*.mime' => 'nullable|string',
-        'year_of_published' => 'nullable|digits:4|integer|min:1900|max:2100',
-        'season_id' => 'nullable|exists:seasons,id',
-    ]);
-
-    try {
-        // ✅ Update main video
-        $video->update([
-            'title' => $request->title,
-            'description' => $request->description,
-            'season_id' => $request->season_id,
-            'category_id' => $request->category_id,
-            'subcategory_id' => $request->subcategory_id,
-            'thumbnail' => $request->thumbnail,
-            'year_of_published' => $request->year_of_published,
-        ]);
-
-        // Delete old files that are no longer in the request
-        $incomingFileUrls = array_column($request->videos, 'file_url');
-        $video->files()->whereNotIn('file_url', $incomingFileUrls)->delete();
-
-        // Save or update files
-        foreach ($request->videos as $fileData) {
-            $existingFile = $video->files()->where('file_url', $fileData['file_url'])->first();
-
-            if ($existingFile) {
-                // ✅ Update existing file
-                $existingFile->update([
-                    'variant' => $fileData['variant'] ?? $existingFile->variant,
-                    'season_id' => $fileData['season'] ?? $existingFile->season_id,
-                    'image' => $fileData['image'] ?? $existingFile->image,
-                    'drm' => $fileData['drm'] ?? $existingFile->drm,
-                    'duration' => $fileData['duration'] ?? $existingFile->duration,
-                    'meta' => json_encode([
-                        'original_name' => $fileData['original_name'] ?? null,
-                        'size' => $fileData['size'] ?? null,
-                        'mime' => $fileData['mime'] ?? null,
-                    ]),
-                ]);
-            } else {
-                // ✅ New file
-                $video->files()->create([
-                    'file_url' => $fileData['file_url'],
-                    'variant' => $fileData['variant'] ?? 'Default',
-                    'season_id' => $fileData['season'] ?? null,
-                    'image' => $fileData['image'] ?? null,
-                    'drm' => $fileData['drm'] ?? false,
-                    'duration' => $fileData['duration'] ?? null,
-                    'meta' => json_encode([
-                        'original_name' => $fileData['original_name'] ?? null,
-                        'size' => $fileData['size'] ?? null,
-                        'mime' => $fileData['mime'] ?? null,
-                    ]),
-                ]);
-            }
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => '✅ Video updated successfully!',
-            'video_id' => $video->id,
-        ]);
-
-    } catch (\Exception $e) {
-        \Log::error('Video update failed: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
-        return response()->json([
-            'success' => false,
-            'error' => $e->getMessage(),
-        ], 500);
-    }
-}
 
 public function updatePresigned(Request $request, $id)
 {
@@ -241,7 +152,7 @@ public function updatePresigned(Request $request, $id)
         'videos' => 'required|array|min:1',
         'videos.*.id' => 'nullable|exists:video_files,id',
 'videos.*.file_url' => 'required|string',
-        'videos.*.image' => 'nullable|string',
+        //'videos.*.image' => 'nullable|string',
         'videos.*.variant' => 'nullable|string|max:255',
         'videos.*.season' => 'nullable|exists:seasons,id',
         'videos.*.drm' => 'nullable|boolean',
@@ -261,6 +172,8 @@ public function updatePresigned(Request $request, $id)
             'thumbnail' => $request->thumbnail,
             'year_of_published' => $request->year_of_published,
         ]);
+
+        $video->refresh();
 
         $mcService = new \App\Services\MediaConvertService();
 
@@ -286,14 +199,14 @@ if (!empty($fileData['id'])) {
 
                 if (!$existingFile) {
                     $existingFile = $video->files()->create([
-                        'variant' => $fileData['variant'] ?? 'Default',
-                        'season_id' => $fileData['season'] ?? null,
-                        'mp4_url' => $fileUrl,
-                        'file_url' => null,
-                        'image' => $fileData['image'] ?? null,
-                        'drm' => $fileData['drm'] ?? false,
-                        'duration' => $fileData['duration'] ?? null,
-                    ]);
+    'variant' => $fileData['variant'] ?? 'Default',
+    'season_id' => $fileData['season'] ?? null,
+    'mp4_url' => $fileUrl,
+    'file_url' => null,
+    'image' => $video->thumbnail,
+    'drm' => $fileData['drm'] ?? 1,
+    'duration' => $fileData['duration'] ?? null,
+]);
                 } else {
                     $existingFile->update([
                         'mp4_url' => $fileUrl,
@@ -312,7 +225,7 @@ if (!empty($fileData['id'])) {
                     'manifest_url' => $outputS3Folder . "{$originalName}.m3u8",
                     'variant' => $fileData['variant'] ?? $existingFile->variant,
                     'season_id' => $fileData['season'] ?? $existingFile->season_id,
-                    'image' => $fileData['image'] ?? $existingFile->image,
+                    'image' => $video->thumbnail,
                     'drm' => $fileData['drm'] ?? $existingFile->drm,
                     'duration' => $fileData['duration'] ?? $existingFile->duration,
                 ]);
@@ -321,22 +234,26 @@ if (!empty($fileData['id'])) {
 
                 // ✅ If already HLS (.m3u8) just update metadata
                 if ($existingFile) {
-                    $existingFile->update([
-                        'variant' => $fileData['variant'] ?? $existingFile->variant,
-                        'season_id' => $fileData['season'] ?? $existingFile->season_id,
-                        'image' => $fileData['image'] ?? $existingFile->image,
-                        'drm' => $fileData['drm'] ?? $existingFile->drm,
-                        'duration' => $fileData['duration'] ?? $existingFile->duration,
-                    ]);
-                }
+    $existingFile->update([
+        'variant' => $fileData['variant'] ?? $existingFile->variant,
+        'season_id' => $fileData['season'] ?? $existingFile->season_id,
+        'image' => $video->thumbnail,
+        'drm' => $fileData['drm'] ?? 1,
+        'duration' => $fileData['duration'] ?? $existingFile->duration,
+    ]);
+}
             }
         }
 
-        return response()->json([
+        /*return response()->json([
             'success' => true,
             'message' => '✅ Video updated and HLS job started!',
             'video_id' => $video->id,
-        ]);
+        ]);*/
+       return redirect()
+    ->route('admin.videos')
+    ->with('success', '✅ Video updated');
+
 
     } catch (\Exception $e) {
         \Log::error('Video update failed: '.$e->getMessage());
@@ -348,79 +265,184 @@ if (!empty($fileData['id'])) {
 }
 
 
-// public function storePresigned(Request $request)
-// {
-//     $request->validate([
-//         'title' => 'required|string|max:255',
-//         'description' => 'nullable|string',
-//         'category_id' => 'required|exists:categories,id',
-//         'subcategory_id' => 'nullable|exists:subcategories,id',
-//         'thumbnail' => 'nullable|string',
-//         'videos' => 'required|array|min:1',
-//         'videos.*.file_url' => 'required|string',
-//         'videos.*.image' => 'nullable|string', // ✅ use database field name
-//         'videos.*.variant' => 'nullable|string|max:255',
-// 'videos.*.season' => 'nullable|exists:seasons,id',
-//         'videos.*.drm' => 'nullable|boolean',
-//         'videos.*.duration' => 'nullable|string|max:50',
-//         'videos.*.original_name' => 'nullable|string',
-//         'videos.*.size' => 'nullable|numeric',
-//         'videos.*.mime' => 'nullable|string',
-//         'year_of_published' => 'nullable|digits:4|integer|min:1900|max:2100',
-//         'season_id' => 'nullable|exists:seasons,id',
-
-
-//     ]);
-
-//     try {
-//         // ✅ Create main Video record with subcategory_id
-//         $video = Video::create([
-//             'title' => $request->title,
-//             'description' => $request->description,
-//             'season_id' => $request->season_id,  
-//             'category_id' => $request->category_id,
-//             'subcategory_id' => $request->subcategory_id,
-//             'thumbnail' => $request->thumbnail,
-//             'status' => 'ready',
-//             'created_by' => auth()->id() ?? auth('admin')->id(),
-//                 'year_of_published' => $request->year_of_published,
-
-//         ]);
-
-//         // ✅ Save uploaded file metadata
-//         foreach ($request->videos as $file) {
-//             $video->files()->create([
-//                 'variant' => $file['variant'] ?? 'Default',
-// 'season_id' => $file['season'] ?? null,
-//                 'file_url' => $file['file_url'],
-//                 'image' => $file['image'] ?? null, // ✅ save in 'image' column
-//                 'manifest_url' => null,
-//                 'drm' => $file['drm'] ?? false,
-//                 'duration' => $file['duration'] ?? null,
-//                 'meta' => json_encode([
-//                     'original_name' => $file['original_name'] ?? null,
-//                     'size' => $file['size'] ?? null,
-//                     'mime' => $file['mime'] ?? null,
-//                 ]),
-//             ]);
-//         }
-
-//         return response()->json([
-//             'success' => true,
-//             'message' => '✅ Video and metadata (including image and season) saved successfully!',
-//             'video_id' => $video->id,
-//         ]);
-
-//     } catch (\Exception $e) {
-//         \Log::error('Presigned store failed: ' . $e->getMessage());
-//         return response()->json([
-//             'success' => false,
-//             'error' => $e->getMessage(),
-//         ], 500);
-//     }
-// }
-
 public function storePresigned(Request $request)
+{
+    $request->validate([
+        'title' => 'required|string|max:255',
+        'description' => 'nullable|string',
+        'category_id' => 'required|exists:categories,id',
+        'subcategory_id' => 'nullable|exists:subcategories,id',
+        'thumbnail' => 'nullable|string',
+
+        'videos' => 'required|array|min:1',
+        'videos.*.file_url' => 'required|string',
+        'videos.*.variant' => 'nullable|string|max:255',
+        'videos.*.season' => 'nullable|exists:seasons,id',
+        'videos.*.duration' => 'nullable|string|max:50',
+        'videos.*.original_name' => 'nullable|string',
+        'videos.*.size' => 'nullable|numeric',
+        'videos.*.mime' => 'nullable|string',
+
+        'year_of_published' => 'nullable|digits:4|integer|min:1900|max:2100',
+        'season_id' => 'nullable|exists:seasons,id',
+    ]);
+
+
+    try {
+
+        $video = Video::create([
+            'title' => $request->title,
+            'description' => $request->description,
+            'season_id' => $request->season_id,
+            'category_id' => $request->category_id,
+            'subcategory_id' => $request->subcategory_id,
+
+            // Main thumbnail only
+            'thumbnail' => $request->thumbnail,
+
+            'status' => 'processing',
+
+            'created_by' => auth()->id() ?? auth('admin')->id(),
+
+            'year_of_published' => $request->year_of_published,
+        ]);
+
+
+        $mcService = new \App\Services\MediaConvertService();
+
+
+        foreach ($request->videos as $file) {
+
+
+            $parsedUrl = parse_url($file['file_url']);
+
+            $bucket = explode('.', $parsedUrl['host'])[0];
+
+            $path = ltrim($parsedUrl['path'], '/');
+
+            $inputS3Url = "s3://{$bucket}/{$path}";
+
+
+
+            /*
+            Create episode record
+            */
+
+            $videoFile = $video->files()->create([
+
+                'variant' => $file['variant'] ?? 'Default',
+
+                'season_id' => $file['season'] ?? null,
+
+
+                // Original uploaded MP4
+                'mp4_url' => $file['file_url'],
+
+
+                // Will update after MediaConvert
+                'file_url' => null,
+
+
+                // SAME MAIN VIDEO THUMBNAIL
+                'image' => $video->thumbnail,
+
+
+                'manifest_url' => null,
+
+
+                // DEFAULT DRM ENABLED
+                'drm' => 1,
+
+
+                'duration' => $file['duration'] ?? null,
+
+
+                'meta' => json_encode([
+
+                    'original_name' => $file['original_name'] ?? null,
+
+                    'size' => $file['size'] ?? null,
+
+                    'mime' => $file['mime'] ?? null,
+
+                ]),
+
+            ]);
+
+
+
+            /*
+            MediaConvert HLS
+            */
+
+            $outputS3Folder =
+                "s3://{$bucket}/hls/{$videoFile->id}/";
+
+
+
+            $originalName =
+                pathinfo($file['file_url'], PATHINFO_FILENAME);
+
+
+
+            $mcService->createHlsJob(
+                $inputS3Url,
+                $outputS3Folder,
+                $originalName
+            );
+
+
+
+            $hlsUrl =
+            "https://{$bucket}.s3.us-east-1.amazonaws.com/hls/{$videoFile->id}/{$originalName}.m3u8";
+
+
+
+            $videoFile->update([
+
+                'file_url' => $hlsUrl,
+
+                'manifest_url' =>
+                    $outputS3Folder . "{$originalName}.m3u8",
+
+            ]);
+
+        }
+
+
+
+        return response()->json([
+
+            'success' => true,
+
+            'message' => '✅ Video uploaded and HLS job started!',
+
+            'video_id' => $video->id,
+
+        ]);
+
+
+
+    } catch (\Exception $e) {
+
+
+        \Log::error(
+            'Presigned store failed: '.$e->getMessage()
+        );
+
+
+        return response()->json([
+
+            'success' => false,
+
+            'error' => $e->getMessage(),
+
+        ],500);
+
+    }
+}
+
+/*public function storePresigned(Request $request)
 {
     $request->validate([
         'title' => 'required|string|max:255',
@@ -510,7 +532,7 @@ public function storePresigned(Request $request)
             'error' => $e->getMessage(),
         ], 500);
     }
-}
+}*/
 
 
 

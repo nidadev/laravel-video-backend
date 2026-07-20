@@ -12,7 +12,7 @@
         <th>Status</th>
         <th>Plan</th>
         <th>Subscription Ends</th>
-        <th>Actions</th>
+        <!--th>Actions</th-->
       </tr>
     </thead>
     <tbody>
@@ -28,7 +28,7 @@
         </td>
         <td>{{ $user->subscriptions->last()->plan->name ?? 'Free' }}</td>
         <td>{{ optional($user->subscriptions->last())->end_date }}</td>
-        <td>
+        <!--td>
           @if($user->status === 'active')
             <form action="{{ route('admin.users.ban', $user->id) }}" method="POST" class="d-inline">
               @csrf
@@ -41,7 +41,7 @@
             </form>
           @endif
 
-          <!-- Upgrade -->
+          <!-- Upgrade ->
           <form action="{{ route('admin.users.upgrade', $user->id) }}" method="POST" class="d-inline">
             @csrf
             <select name="plan_id" class="form-select form-select-sm d-inline-block" style="width:120px;">
@@ -51,7 +51,7 @@
             </select>
             <button class="btn btn-sm btn-primary">Upgrade</button>
           </form>
-        </td>
+        </td-->
       </tr>
       @endforeach
     </tbody>

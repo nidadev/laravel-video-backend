@@ -82,10 +82,10 @@
           {{-- Thumbnail --}}
           <div class="mb-3">
               <label>Thumbnail</label>
-              @if($video->thumbnail)
-                  <img src="{{ $video->thumbnail }}" width="150" class="mb-2" id="thumbnail-preview">
-              @endif
-              <input type="file" name="thumbnail_file" class="form-control" id="thumbnailFile">
+<img src="{{ $video->thumbnail }}" 
+width="150" 
+class="mb-2" 
+id="thumbnail-preview">              <input type="file" name="thumbnail_file" class="form-control" id="thumbnailFile">
               <input type="hidden" name="thumbnail" id="thumbnail-url" value="{{ $video->thumbnail }}">
           </div>
 
@@ -122,13 +122,13 @@
                           <input type="text" name="videos[{{ $loop->index }}][duration]" class="form-control" value="{{ $file->duration }}">
                       </div>
 
-                      <div class="col-md-2">
+                      <!--div class="col-md-2">
                           <label>DRM?</label>
                           <select name="videos[{{ $loop->index }}][drm]" class="form-select">
                               <option value="0" {{ !$file->drm ? 'selected' : '' }}>No</option>
                               <option value="1" {{ $file->drm ? 'selected' : '' }}>Yes</option>
                           </select>
-                      </div>
+                      </div-->
 <div class="col-md-2">
     <label>Season</label>
     <select name="videos[{{ $loop->index }}][season]" class="form-select season">
@@ -141,7 +141,7 @@
     </select>
 </div>
 
-                      <div class="col-md-2">
+                      <!--div class="col-md-2">
                           <label>Episode Image</label>
                           @if($file->image)
                               <img src="{{ $file->image }}" width="100" class="mb-1">
@@ -151,9 +151,9 @@
                           <div class="progress image-progress mt-1" style="height: 20px; display:none;">
                               <div class="progress-bar bg-success" role="progressbar" style="width:0%">0%</div>
                           </div>
-                      </div>
+                      </div-->
 
-                      <input type="hidden" name="videos[{{ $loop->index }}][season]" value="{{ $file->season_id }}">
+                      <!--input type="hidden" name="videos[{{ $loop->index }}][season]" value="{{ $file->season_id }}"-->
 
                       <div class="col-12 text-end">
                           <button type="button" class="btn btn-danger remove-file-item mt-2">Remove</button>
@@ -269,9 +269,12 @@ document.getElementById('add-video-file').addEventListener('click', function() {
     const template = document.querySelector('.video-file-item').cloneNode(true);
 
     // Clear inputs
-   template.querySelectorAll('input').forEach(input => {
+  template.querySelectorAll('input').forEach(input => {
 
-    if(input.name && input.name.includes('[id]')){
+    if(input.name && (
+        input.name.includes('[id]') ||
+        input.name.includes('[file_url]')
+    )){
         input.value = '';
     }
 
@@ -340,11 +343,9 @@ document.getElementById('thumbnailFile').addEventListener('change', async functi
 
 // Video / Image upload with per-item progress
 document.getElementById('video-files-container').addEventListener('change', async function(e){
-    if(!e.target.classList.contains('video-file') && !e.target.classList.contains('image-file')) return;
-
+if(!e.target.classList.contains('video-file')) return;
     const file = e.target.files[0];
-    const type = e.target.classList.contains('video-file') ? 'video' : 'video_image';
-   
+const type = 'video';   
    if(type === 'video'){
         if(!file.name.toLowerCase().endsWith('.mp4')){
             alert("Only MP4 files are allowed. Video will be converted to streaming format automatically.");

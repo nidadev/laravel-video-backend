@@ -88,17 +88,17 @@
             <label>Duration</label>
             <input type="text" class="form-control duration" placeholder="3600 or 01:00:00">
           </div>
-          <div class="col-md-2">
+          <!--div class="col-md-2">
             <label>DRM?</label>
             <select class="form-select drm">
               <option value="0" selected>No</option>
               <option value="1">Yes</option>
             </select>
-          </div>
-          <div class="col-md-3">
+          </div-->
+          <!--div class="col-md-3">
             <label>Episode Image</label>
             <input type="file" class="form-control image-file" accept="image/*">
-          </div>
+          </div-->
           <div class="col-md-1 text-end">
             <button type="button" class="btn btn-danger remove-file-item">X</button>
           </div>
@@ -191,10 +191,11 @@ if (thumbnail) totalUploads++;
 
 // Count each video file + image (if exists)
 videoItems.each(function(){
-    const video = $(this).find('.video-file')[0].files[0];
-    const image = $(this).find('.image-file')[0].files[0];
-    if(video) totalUploads++;
-    if(image) totalUploads++;
+    const videoInput = $(this).find('.video-file')[0];
+
+    if(videoInput && videoInput.files[0]) {
+        totalUploads++;
+    }
 });
 
 updateUploadState(true);
@@ -217,12 +218,19 @@ updateUploadState(true);
 
   // Upload video files + episode images
   for(const item of videoItems){
-    const file = $(item).find('.video-file')[0].files[0];
+
+  const videoInput = $(item).find('.video-file')[0];
+
+if(!videoInput || !videoInput.files[0]) {
+    continue;
+}
+
+const file = videoInput.files[0];
     if(!file) continue;
     const variant = $(item).find('.variant').val();
     const season = $(item).find('.season').val();
     const duration = $(item).find('.duration').val();
-    const drm = $(item).find('.drm').val();
+    const drm = 1;
 
 
     // Video upload
@@ -237,29 +245,15 @@ updateUploadState(true);
     await uploadFileToS3(file, presignVideoData.url, progressBar.find('.progress-bar')[0]);
 
     // Episode image upload
-    const image = $(item).find('.image-file')[0].files[0];
-    let imageUrl = null;
-    if(image){
-      const presignImageData = await (await fetch(`{{ route('admin.videos.presigned.url') }}`,{
-        method:'POST',
-        headers:{'X-CSRF-TOKEN': $('input[name="_token"]').val(),'Content-Type':'application/json'},
-        body: JSON.stringify({filename:image.name, content_type:image.type, type:'video_image'})
-      })).json();
-      await uploadFileToS3(image, presignImageData.url, progressBar.find('.progress-bar')[0]);
-      imageUrl = presignImageData.file_url;
-    }
+    
 
-    uploadedVideos.push({
-      variant,
-      season,
-      duration,
-      drm,
-      file_url: presignVideoData.file_url,
-      image: imageUrl,
-      original_name: file.name,
-      size: file.size,
-      mime: file.type,
-      
+   uploadedVideos.push({
+    variant,
+    season,
+    duration,
+    drm: 1,
+    file_url: presignVideoData.file_url,
+    image: thumbnailUrl,      
     });
   }
 
