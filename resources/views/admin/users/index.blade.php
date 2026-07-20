@@ -12,7 +12,7 @@
         <th>Status</th>
         <th>Plan</th>
         <th>Subscription Ends</th>
-        <!--th>Actions</th-->
+        <th>Actions</th>
       </tr>
     </thead>
     <tbody>
@@ -28,6 +28,15 @@
         </td>
         <td>{{ $user->subscriptions->last()->plan->name ?? 'Free' }}</td>
         <td>{{ optional($user->subscriptions->last())->end_date }}</td>
+        <td>
+    <form action="{{ route('admin.users.delete', $user->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this user?');">
+        @csrf
+        @method('DELETE')
+        <button type="submit" class="btn btn-sm btn-danger">
+            Delete
+        </button>
+    </form>
+</td>
         <!--td>
           @if($user->status === 'active')
             <form action="{{ route('admin.users.ban', $user->id) }}" method="POST" class="d-inline">
