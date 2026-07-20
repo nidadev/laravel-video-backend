@@ -57,6 +57,6 @@
     </tbody>
   </table>
  
-  {{ $users->links() }}
+{{ $users->links('pagination::bootstrap-5') }}
 </div>
 @endsection
