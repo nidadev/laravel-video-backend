@@ -239,7 +239,8 @@ public function updatePresigned(Request $request, $id)
         'subcategory_id' => 'nullable|exists:subcategories,id',
         'thumbnail' => 'nullable|string',
         'videos' => 'required|array|min:1',
-        'videos.*.file_url' => 'required|string',
+        'videos.*.id' => 'nullable|exists:video_files,id',
+'videos.*.file_url' => 'required|string',
         'videos.*.image' => 'nullable|string',
         'videos.*.variant' => 'nullable|string|max:255',
         'videos.*.season' => 'nullable|exists:seasons,id',
@@ -267,10 +268,13 @@ public function updatePresigned(Request $request, $id)
 
             $fileUrl = $fileData['file_url'];
 
-            $existingFile = $video->files()
-                ->where('file_url', $fileUrl)
-                ->orWhere('mp4_url', $fileUrl)
-                ->first();
+            $existingFile = null;
+
+if (!empty($fileData['id'])) {
+    $existingFile = $video->files()
+        ->where('id', $fileData['id'])
+        ->first();
+}
 
             // 🔥 If MP4 uploaded again → reconvert
             if (str_ends_with($fileUrl, '.mp4')) {

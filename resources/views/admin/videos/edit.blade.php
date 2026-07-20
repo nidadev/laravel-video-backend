@@ -98,6 +98,10 @@
 
                       <div class="col-md-3">
                           <label>Video File</label>
+
+                            <input type="hidden" 
+           name="videos[{{ $loop->index }}][id]" 
+           value="{{ $file->id }}">
                           <input type="hidden" name="videos[{{ $loop->index }}][file_url]" value="{{ $file->file_url }}">
                           <video width="100%" controls class="mb-1">
                               <source src="{{ $file->file_url }}">
@@ -265,9 +269,17 @@ document.getElementById('add-video-file').addEventListener('click', function() {
     const template = document.querySelector('.video-file-item').cloneNode(true);
 
     // Clear inputs
-    template.querySelectorAll('input').forEach(input => {
-        if(input.type !== 'hidden') input.value = '';
-    });
+   template.querySelectorAll('input').forEach(input => {
+
+    if(input.name && input.name.includes('[id]')){
+        input.value = '';
+    }
+
+    if(input.type !== 'hidden') {
+        input.value = '';
+    }
+
+});
     template.querySelectorAll('select').forEach(sel => sel.selectedIndex = 0);
     template.querySelectorAll('video, img').forEach(el => el.remove());
 
