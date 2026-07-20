@@ -49,4 +49,17 @@ class UserController extends Controller
 
         return back()->with('success', 'User upgraded to ' . $plan->name);
     }
+
+    public function destroy($id)
+{
+    $user = User::findOrFail($id);
+
+    // delete subscriptions first if needed
+    //$user->subscriptions()->delete();
+
+    // delete user
+    $user->delete();
+
+    return back()->with('success', 'User has been deleted.');
+}
 }
