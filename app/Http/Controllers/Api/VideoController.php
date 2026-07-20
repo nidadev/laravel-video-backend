@@ -172,7 +172,9 @@ class VideoController extends Controller
         ]);
     }
 
-    public function update(Request $request, $id)
+
+
+   public function update(Request $request, $id)
 {
     //dd('123');
     $video = Video::with('files')->findOrFail($id);
