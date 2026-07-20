@@ -60,12 +60,73 @@ class VideoController extends Controller
 
 
 
-    public function destroy($id)
+public function destroy($id)
 {
-    $video = Video::findOrFail($id);
-    $video->delete();
+    try {
 
-    return redirect()->route('admin.videos')->with('success', 'Video deleted successfully');
+        $video = Video::with('files')->findOrFail($id);
+
+        // Delete main thumbnail
+        if ($video->thumbnail) {
+            $thumbnailPath = parse_url($video->thumbnail, PHP_URL_PATH);
+
+            if ($thumbnailPath) {
+                Storage::disk('s3')->delete(ltrim($thumbnailPath, '/'));
+            }
+        }
+
+
+        // Delete all episode files
+        foreach ($video->files as $file) {
+
+            // Delete HLS folder: hls/{video_file_id}/
+            Storage::disk('s3')->deleteDirectory('hls/' . $file->id);
+
+
+            // Delete original MP4
+            if ($file->mp4_url) {
+
+                $mp4Path = parse_url($file->mp4_url, PHP_URL_PATH);
+
+                if ($mp4Path) {
+                    Storage::disk('s3')->delete(ltrim($mp4Path, '/'));
+                }
+            }
+
+
+            // Delete episode image if exists
+            if ($file->image && $file->image != $video->thumbnail) {
+
+                $imagePath = parse_url($file->image, PHP_URL_PATH);
+
+                if ($imagePath) {
+                    Storage::disk('s3')->delete(ltrim($imagePath, '/'));
+                }
+            }
+
+
+            // Delete video_files row
+            $file->delete();
+        }
+
+
+        // Delete main video row
+        $video->delete();
+
+
+        return redirect()
+            ->route('admin.videos')
+            ->with('success', 'Video and all S3 files deleted successfully');
+
+
+    } catch (\Exception $e) {
+
+        \Log::error('Video delete failed: '.$e->getMessage());
+
+        return redirect()
+            ->route('admin.videos')
+            ->with('error', 'Delete failed: '.$e->getMessage());
+    }
 }
 
 public function edit($id)
@@ -175,19 +236,44 @@ public function updatePresigned(Request $request, $id)
         $video->refresh();
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Delete removed episodes
-        |--------------------------------------------------------------------------
-        */
-        $submittedIds = collect($request->videos)
-            ->pluck('id')
-            ->filter()
-            ->toArray();
+       /*
+|--------------------------------------------------------------------------
+| Delete removed episodes from DB + S3
+|--------------------------------------------------------------------------
+*/
 
-        $video->files()
-            ->whereNotIn('id', $submittedIds)
-            ->delete();
+$submittedIds = collect($request->videos)
+    ->pluck('id')
+    ->filter()
+    ->toArray();
+
+
+$removedFiles = $video->files()
+    ->whereNotIn('id', $submittedIds)
+    ->get();
+
+
+foreach ($removedFiles as $removedFile) {
+
+    // Delete original MP4
+    if ($removedFile->mp4_url) {
+        $this->deleteS3Object($removedFile->mp4_url);
+    }
+
+
+    // Delete HLS folder (m3u8 + segments)
+    if ($removedFile->manifest_url) {
+
+        $this->deleteS3Folder(
+            $removedFile->manifest_url
+        );
+
+    }
+
+
+    // Delete database record
+    $removedFile->delete();
+}
 
 
         $mcService = new \App\Services\MediaConvertService();
@@ -602,5 +688,34 @@ public function toggleTrending(Request $request, $id)
     return back()->with('success', 'Video trending status updated successfully.');
 }
 
+private function deleteS3Object($url)
+{
+    $parsed = parse_url($url);
+
+    $key = ltrim($parsed['path'], '/');
+
+    \Storage::disk('s3')->delete($key);
+}
+
+
+private function deleteS3Folder($url)
+{
+    $parsed = parse_url($url);
+
+    $path = ltrim($parsed['path'], '/');
+
+    // Example:
+    // hls/74/episode1.m3u8
+
+    $folder = dirname($path);
+
+
+    $files = \Storage::disk('s3')->allFiles($folder);
+
+
+    if (!empty($files)) {
+        \Storage::disk('s3')->delete($files);
+    }
+}
 
 }
