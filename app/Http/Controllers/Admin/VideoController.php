@@ -116,7 +116,7 @@ public function destroy($id)
 
         return redirect()
             ->route('admin.videos')
-            ->with('success', 'Video and all S3 files deleted successfully');
+            ->with('success', 'Video files deleted successfully');
 
 
     } catch (\Exception $e) {
