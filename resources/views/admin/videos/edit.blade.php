@@ -173,24 +173,7 @@ id="thumbnail-preview">              <input type="file" name="thumbnail_file" cl
     </div>
   </div>
 </div>
-<!-- pagination for previous and next video -->
-<div class="d-flex justify-content-between mb-3">
-    <div>
-        @if($previous)
-            <a href="{{ route('admin.videos.edit', $previous->id) }}" class="btn btn-outline-secondary">
-                ← Previous
-            </a>
-        @endif
-    </div>
 
-    <div>
-        @if($next)
-            <a href="{{ route('admin.videos.edit', $next->id) }}" class="btn btn-outline-secondary">
-                Next →
-            </a>
-        @endif
-    </div>
-</div>
 @push('scripts')
 <script>
     let isUploading = false;
