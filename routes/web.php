@@ -9,73 +9,174 @@ use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\SubcategoryController;
 
-
 Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('/admin/login', [AuthController::class, 'showLoginForm'])->name('admin.login');
-Route::post('/admin/login', [AuthController::class, 'login'])->name('admin.login.submit');
-Route::get('/admin/logout', [AuthController::class, 'logout'])->name('admin.logout');
+/*
+|--------------------------------------------------------------------------
+| Admin Login (No Auth Required)
+|--------------------------------------------------------------------------
+*/
 
-Route::middleware('admin.auth')->group(function () {
-    Route::get('/admin/dashboard', [AuthController::class, 'dashboard'])->name('admin.dashboard');
+Route::prefix('admin')->group(function () {
 
-    // Video Management
-    Route::get('/admin/videos', [VideoController::class, 'index'])->name('admin.videos');
-    Route::get('/admin/videos/{id}/edit', [VideoController::class, 'edit'])->name('admin.videos.edit');
-    Route::put('/admin/videos/{id}/update', [VideoController::class, 'updatePresigned'])->name('admin.videos.update');
-    Route::delete('/admin/videos/{id}', [VideoController::class, 'destroy'])->name('admin.videos.destroy');
+    Route::get('/login', [AuthController::class, 'showLoginForm'])
+        ->name('admin.login');
 
-     // 🆕 Presigned S3 Upload Routes
-  Route::get('/admin/videos/upload-presigned', [VideoController::class, 'createPresigned'])
-    ->name('admin.videos.presigned.create');
+    Route::post('/login', [AuthController::class, 'login'])
+        ->name('admin.login.submit');
 
-Route::post('/admin/videos/presigned-url', [VideoController::class, 'generatePresignedUrl'])
-    ->name('admin.videos.presigned.url');
-
-Route::post('/admin/videos/presigned-store', [VideoController::class, 'storePresigned'])
-    ->name('admin.videos.presigned.store');
-
-    Route::get('/users', [UserController::class, 'index'])->name('admin.users.index');
-    Route::post('/users/{id}/ban', [UserController::class, 'ban'])->name('admin.users.ban');
-    Route::post('/users/{id}/unban', [UserController::class, 'unban'])->name('admin.users.unban');
-    Route::post('/users/{id}/upgrade', [UserController::class, 'upgrade'])->name('admin.users.upgrade');
-
- // ----------------- 🔥 Trending Videos -----------------
-    Route::get('/admin/trending', [TrendingVideoController::class, 'index'])->name('admin.trending.index');
-    Route::get('/admin/trending/create', [TrendingVideoController::class, 'create'])->name('admin.trending.create');
-    Route::post('/admin/trending/store', [TrendingVideoController::class, 'store'])->name('admin.trending.store');
-    Route::delete('/admin/trending/{id}', [TrendingVideoController::class, 'destroy'])->name('admin.trending.destroy');
-
-    Route::get('/admin/videos/most-watched', [VideoController::class, 'mostWatched'])
-    ->name('admin.videos.mostWatched');
-
-  Route::get('/notifications', [NotificationController::class, 'index'])->name('admin.notifications.index');
-    Route::post('/notifications/send', [NotificationController::class, 'send'])->name('admin.notifications.send');
-
-Route::get('/categories', [CategoryController::class, 'index'])->name('admin.categories.index');
-    Route::get('/categories/create', [CategoryController::class, 'create'])->name('admin.categories.create');
-    Route::post('/categories/store', [CategoryController::class, 'store'])->name('admin.categories.store');
-    Route::get('/categories/{category}/edit', [CategoryController::class, 'edit'])->name('admin.categories.edit');
-    Route::put('/categories/{category}/update', [CategoryController::class, 'update'])->name('admin.categories.update');
-    Route::delete('/categories/{category}/delete', [CategoryController::class, 'destroy'])->name('admin.categories.destroy');
-
-
-     Route::get('/subcategories', [SubcategoryController::class, 'index'])->name('admin.subcategories.index');
-    Route::get('/subcategories/create', [SubcategoryController::class, 'create'])->name('admin.subcategories.create');
-    Route::post('/subcategories/store', [SubcategoryController::class, 'store'])->name('admin.subcategories.store');
-    Route::get('/subcategories/{subcategory}/edit', [SubcategoryController::class, 'edit'])->name('admin.subcategories.edit');
-    Route::put('/subcategories/{subcategory}/update', [SubcategoryController::class, 'update'])->name('admin.subcategories.update');
-    Route::delete('/subcategories/{subcategory}/delete', [SubcategoryController::class, 'destroy'])->name('admin.subcategories.destroy');
-Route::patch('/admin/videos/{id}/trending', [VideoController::class, 'toggleTrending'])->name('admin.videos.toggleTrending');
-Route::delete('/admin/users/{id}', [UserController::class, 'destroy'])
-    ->name('admin.users.delete');
 });
 
+/*
+|--------------------------------------------------------------------------
+| Protected Admin Routes
+|--------------------------------------------------------------------------
+*/
 
+Route::prefix('admin')
+    ->middleware(['web','auth:admin'])
+    ->group(function () {
 
-// ----------- API ROUTES -----------
+        // Dashboard
+        Route::get('/dashboard', [AuthController::class, 'dashboard'])
+            ->name('admin.dashboard');
 
+        // Logout
+        Route::get('/logout', [AuthController::class, 'logout'])
+            ->name('admin.logout');
 
+        /*
+        |--------------------------------------------------------------------------
+        | Videos
+        |--------------------------------------------------------------------------
+        */
 
+        Route::get('/videos', [VideoController::class, 'index'])
+            ->name('admin.videos');
+
+        Route::get('/videos/upload-presigned', [VideoController::class, 'createPresigned'])
+            ->name('admin.videos.presigned.create');
+
+        Route::post('/videos/presigned-url', [VideoController::class, 'generatePresignedUrl'])
+            ->name('admin.videos.presigned.url');
+
+        Route::post('/videos/presigned-store', [VideoController::class, 'storePresigned'])
+            ->name('admin.videos.presigned.store');
+
+        Route::get('/videos/{id}/edit', [VideoController::class, 'edit'])
+            ->name('admin.videos.edit');
+
+        Route::put('/videos/{id}/update', [VideoController::class, 'updatePresigned'])
+            ->name('admin.videos.update');
+
+        Route::delete('/videos/{id}', [VideoController::class, 'destroy'])
+            ->name('admin.videos.destroy');
+
+        Route::get('/videos/most-watched', [VideoController::class, 'mostWatched'])
+            ->name('admin.videos.mostWatched');
+
+        Route::patch('/videos/{id}/trending', [VideoController::class, 'toggleTrending'])
+            ->name('admin.videos.toggleTrending');
+
+        /*
+        |--------------------------------------------------------------------------
+        | Users
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get('/users', [UserController::class, 'index'])
+            ->name('admin.users.index');
+
+        Route::post('/users/{id}/ban', [UserController::class, 'ban'])
+            ->name('admin.users.ban');
+
+        Route::post('/users/{id}/unban', [UserController::class, 'unban'])
+            ->name('admin.users.unban');
+
+        Route::post('/users/{id}/upgrade', [UserController::class, 'upgrade'])
+            ->name('admin.users.upgrade');
+
+        Route::delete('/users/{id}', [UserController::class, 'destroy'])
+            ->name('admin.users.delete');
+
+        /*
+        |--------------------------------------------------------------------------
+        | Trending Videos
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get('/trending', [TrendingVideoController::class, 'index'])
+            ->name('admin.trending.index');
+
+        Route::get('/trending/create', [TrendingVideoController::class, 'create'])
+            ->name('admin.trending.create');
+
+        Route::post('/trending/store', [TrendingVideoController::class, 'store'])
+            ->name('admin.trending.store');
+
+        Route::delete('/trending/{id}', [TrendingVideoController::class, 'destroy'])
+            ->name('admin.trending.destroy');
+
+        /*
+        |--------------------------------------------------------------------------
+        | Notifications
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get('/notifications', [NotificationController::class, 'index'])
+            ->name('admin.notifications.index');
+
+        Route::post('/notifications/send', [NotificationController::class, 'send'])
+            ->name('admin.notifications.send');
+
+        /*
+        |--------------------------------------------------------------------------
+        | Categories
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get('/categories', [CategoryController::class, 'index'])
+            ->name('admin.categories.index');
+
+        Route::get('/categories/create', [CategoryController::class, 'create'])
+            ->name('admin.categories.create');
+
+        Route::post('/categories/store', [CategoryController::class, 'store'])
+            ->name('admin.categories.store');
+
+        Route::get('/categories/{category}/edit', [CategoryController::class, 'edit'])
+            ->name('admin.categories.edit');
+
+        Route::put('/categories/{category}/update', [CategoryController::class, 'update'])
+            ->name('admin.categories.update');
+
+        Route::delete('/categories/{category}/delete', [CategoryController::class, 'destroy'])
+            ->name('admin.categories.destroy');
+
+        /*
+        |--------------------------------------------------------------------------
+        | Subcategories
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get('/subcategories', [SubcategoryController::class, 'index'])
+            ->name('admin.subcategories.index');
+
+        Route::get('/subcategories/create', [SubcategoryController::class, 'create'])
+            ->name('admin.subcategories.create');
+
+        Route::post('/subcategories/store', [SubcategoryController::class, 'store'])
+            ->name('admin.subcategories.store');
+
+        Route::get('/subcategories/{subcategory}/edit', [SubcategoryController::class, 'edit'])
+            ->name('admin.subcategories.edit');
+
+        Route::put('/subcategories/{subcategory}/update', [SubcategoryController::class, 'update'])
+            ->name('admin.subcategories.update');
+
+        Route::delete('/subcategories/{subcategory}/delete', [SubcategoryController::class, 'destroy'])
+            ->name('admin.subcategories.destroy');
+
+    });

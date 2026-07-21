@@ -27,14 +27,14 @@
     </div>
 
     <!-- Banned Users -->
-    <div class="col-md-3">
+    <!--div class="col-md-3">
       <div class="card shadow-sm text-center border-0">
         <div class="card-body">
           <h6 class="text-muted">🚫 Banned Users</h6>
           <h2 class="fw-bold text-danger">{{ $bannedUsers ?? 0 }}</h2>
         </div>
       </div>
-    </div>
+    </div-->
 
     <!-- Active Subscriptions -->
     <div class="col-md-3">
@@ -47,14 +47,14 @@
     </div>
 
     <!-- Revenue -->
-    <div class="col-md-3">
+    <!--div class="col-md-3">
       <div class="card shadow-sm text-center border-0">
         <div class="card-body">
           <h6 class="text-muted">💳 Revenue </h6>
           <h2 class="fw-bold text-info">$4234</h2>
         </div>
       </div>
-    </div>
+    </div-->
 
   </div>
 </div>

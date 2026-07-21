@@ -14,28 +14,41 @@ class AuthController extends Controller
     //
      public function showLoginForm()
     {
+        if (Auth::guard('admin')->check()) {
+        return redirect()->route('admin.dashboard');
+    }
         return view('admin.login');
     }
 
     public function login(Request $request)
-    {
-        $credentials = $request->only('email', 'password');
+{
+    $credentials = $request->only('email', 'password');
 
-        if (Auth::guard('admin')->attempt($credentials)) {
-            return redirect()->route('admin.dashboard');
-        }
+    if (Auth::guard('admin')->attempt($credentials)) {
 
-        return back()->withErrors(['email' => 'Invalid credentials']);
+        $request->session()->regenerate();
+
+        return redirect()->route('admin.dashboard');
     }
 
-    public function logout()
-    {
-        Auth::guard('admin')->logout();
-        return redirect()->route('admin.login');
-    }
+    return back()->withErrors([
+        'email' => 'Invalid credentials'
+    ]);
+}
+
+   public function logout(Request $request)
+{
+    Auth::guard('admin')->logout();
+
+    $request->session()->invalidate();
+    $request->session()->regenerateToken();
+
+    return redirect()->route('admin.login');
+}
 
     public function dashboard()
     {
+        //dd(Auth::guard('admin')->user());
         $videoCount = \App\Models\Video::count();
          $totalUsers = User::count();
         //dd($totalUsers);
