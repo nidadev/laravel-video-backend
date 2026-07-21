@@ -173,6 +173,7 @@ id="thumbnail-preview">              <input type="file" name="thumbnail_file" cl
     </div>
   </div>
 </div>
+{{ $users->links('pagination::bootstrap-5') }}
 
 @push('scripts')
 <script>
