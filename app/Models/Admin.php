@@ -13,6 +13,8 @@ class Admin extends Authenticatable
         'name',
         'email',
         'password',
+        'google2fa_secret',
+    'two_factor_enabled',
     ];
 
     protected $hidden = [
