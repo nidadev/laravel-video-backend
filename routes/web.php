@@ -18,8 +18,7 @@ Route::get('/', function () {
 | Admin Login (No Auth Required)
 |--------------------------------------------------------------------------
 */
-
-Route::prefix('admin')->group(function () {
+Route::prefix('admin')->middleware('guest:admin')->group(function () {
 
     Route::get('/login', [AuthController::class, 'showLoginForm'])
         ->name('admin.login');
@@ -28,6 +27,18 @@ Route::prefix('admin')->group(function () {
         ->name('admin.login.submit');
 
 });
+
+Route::prefix('admin')->group(function () {
+    
+
+        Route::get('/2fa', [AuthController::class,'show2FA'])
+        ->name('admin.2fa.verify');
+
+    Route::post('/2fa', [AuthController::class,'verify2FA'])
+        ->name('admin.2fa.verify.post');
+
+});
+
 
 /*
 |--------------------------------------------------------------------------
@@ -39,6 +50,11 @@ Route::prefix('admin')
     ->middleware(['web','auth:admin'])
     ->group(function () {
 
+    Route::get('/2fa/setup', [AuthController::class,'setup2FA'])
+            ->name('admin.2fa.setup');
+
+        Route::post('/2fa/enable', [AuthController::class,'enable2FA'])
+            ->name('admin.2fa.enable');
         // Dashboard
         Route::get('/dashboard', [AuthController::class, 'dashboard'])
             ->name('admin.dashboard');
@@ -178,5 +194,7 @@ Route::prefix('admin')
 
         Route::delete('/subcategories/{subcategory}/delete', [SubcategoryController::class, 'destroy'])
             ->name('admin.subcategories.destroy');
+
+            
 
     });
