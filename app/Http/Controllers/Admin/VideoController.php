@@ -134,8 +134,11 @@ public function edit($id)
     $video = Video::with('files')->findOrFail($id);
     $categories = Category::all();
     $seasons = Season::all(); 
+     $previous = Video::where('id', '<', $video->id)->latest('id')->first();
+    $next = Video::where('id', '>', $video->id)->oldest('id')->first();
 
-    return view('admin.videos.edit', compact('video', 'categories','seasons'));
+    return view('admin.videos.edit', compact('video', 'categories','seasons','previous',
+        'next'));
 }
 
 
