@@ -101,24 +101,7 @@
 
                     <hr>
 
-                    <div class="mb-4">
-
-                        <label class="form-label fw-semibold">
-                            Or enter this secret manually
-                        </label>
-
-                        <div class="secret-box" id="secret">
-                            {{ $secret }}
-                        </div>
-
-                        <button
-                            type="button"
-                            class="btn btn-outline-primary btn-sm mt-2"
-                            onclick="copySecret()">
-                            📋 Copy Secret
-                        </button>
-
-                    </div>
+                    
 
                     <form method="POST" action="{{ route('admin.2fa.enable') }}">
 
