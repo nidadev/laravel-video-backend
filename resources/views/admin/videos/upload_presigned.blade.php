@@ -46,7 +46,7 @@
     <select name="season_id" class="form-select">
         <option value="">Select Season</option>
         @foreach($seasons as $s)
-            <option value="{{ $s->id }}">{{ $s->name }}</option>
+            <option value="{{ $s->id }}" {{ $s->name == 'Season 1' ? 'selected' : '' }}>{{ $s->name }}</option>
         @endforeach
     </select>
 </div>
@@ -79,7 +79,7 @@
     <select class="form-select season">
         <option value="">Select Season</option>
         @foreach($seasons as $s)
-            <option value="{{ $s->id }}">{{ $s->name }}</option>
+            <option value="{{ $s->id }}" {{ $s->name == 'Season 1' ? 'selected' : '' }}>{{ $s->name }}</option>
         @endforeach
     </select>
 </div>
