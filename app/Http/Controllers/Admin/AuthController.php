@@ -162,7 +162,7 @@ public function login(Request $request)
 }
 
 
-public function enable2FA(Request $request)
+public function enable2FA_codex(Request $request)
 {
     $request->validate([
         'code' => 'required|digits:6'
@@ -203,7 +203,7 @@ public function enable2FA(Request $request)
         ->with('success', '2FA enabled successfully');
 }
 
-   public function enable2FA_previous(Request $request)
+   public function enable2FA(Request $request)
 {
     $request->validate([
         'code'=>'required'
@@ -261,7 +261,7 @@ public function enable2FA(Request $request)
     }
 
 
-public function verify2FA(Request $request)
+public function verify2FA_codex(Request $request)
 {
     $request->validate([
         'code' => 'required|digits:6'
@@ -303,18 +303,14 @@ public function verify2FA(Request $request)
 }
 
 
-    public function verify2FA_previous(Request $request)
+    public function verify2FA(Request $request)
     {
 
         $request->validate([
             'code'=>'required'
         ]);
 
-
-
         $adminId = session('2fa:id');
-
-
 
         if(!$adminId){
 
@@ -324,15 +320,9 @@ public function verify2FA(Request $request)
         }
 
 
-
         $admin = Admin::findOrFail($adminId);
 
-
-
-
         $google2fa = new Google2FA();
-
-
 
         $valid = $google2fa->verifyKey(
             $admin->google2fa_secret,
@@ -350,18 +340,9 @@ public function verify2FA(Request $request)
 
         }
 
-
-
-
-
         Auth::guard('admin')->login($admin);
 
-
-
         session()->forget('2fa:id');
-
-
-
 
         return redirect()
             ->route('admin.dashboard');
