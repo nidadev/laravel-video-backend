@@ -45,7 +45,7 @@ public function login(Request $request)
 
 
     // Secret exists but 2FA is not confirmed
-    if (!$admin->two_factor_enabled && $admin->google2fa_secret) {
+    if (!$admin->two_factor_enabled) {
 
         return redirect()
             ->route('admin.2fa.setup');
@@ -104,9 +104,6 @@ public function login(Request $request)
         $bannedUsers = User::where('status','banned')->count();
 
         $activeSubscriptions = Subscription::where('status','active')->count();
-
-
-
         return view('admin.dashboard', compact(
             'videoCount',
             'totalUsers',
@@ -162,46 +159,7 @@ public function login(Request $request)
 }
 
 
-public function enable2FA_codex(Request $request)
-{
-    $request->validate([
-        'code' => 'required|digits:6'
-    ]);
 
-    $admin = Auth::guard('admin')->user();
-
-    if (!$admin || !$admin->google2fa_secret) {
-        return redirect()
-            ->route('admin.login')
-            ->withErrors([
-                'code' => '2FA setup session expired. Please login again.'
-            ]);
-    }
-
-    $google2fa = new Google2FA();
-
-    $valid = $google2fa->verifyKey(
-        $admin->google2fa_secret,
-        $request->code,
-        1
-    );
-
-    if (!$valid) {
-        return back()->withErrors([
-            'code' => 'Invalid authentication code'
-        ]);
-    }
-
-    $admin->update([
-        'two_factor_enabled' => true,
-    ]);
-
-    $request->session()->regenerate();
-
-    return redirect()
-        ->route('admin.dashboard')
-        ->with('success', '2FA enabled successfully');
-}
 
    public function enable2FA(Request $request)
 {
@@ -212,15 +170,12 @@ public function enable2FA_codex(Request $request)
 
     $admin = Auth::guard('admin')->user();
 
-
     $google2fa = new Google2FA();
-
 
     $valid = $google2fa->verifyKey(
         $admin->google2fa_secret,
         $request->code
     );
-
 
     if(!$valid){
 
@@ -230,11 +185,9 @@ public function enable2FA_codex(Request $request)
 
     }
 
-
     $admin->update([
         'two_factor_enabled'=>true
     ]);
-
 
     return redirect()
         ->route('admin.dashboard')
@@ -261,46 +214,7 @@ public function enable2FA_codex(Request $request)
     }
 
 
-public function verify2FA_codex(Request $request)
-{
-    $request->validate([
-        'code' => 'required|digits:6'
-    ]);
 
-    $adminId = session('2fa:id');
-
-    if (!$adminId) {
-        return redirect()->route('admin.login');
-    }
-
-    $admin = Admin::findOrFail($adminId);
-
-    if (!$admin->two_factor_enabled || !$admin->google2fa_secret) {
-        return redirect()->route('admin.login');
-    }
-
-    $google2fa = new Google2FA();
-
-    $valid = $google2fa->verifyKey(
-        $admin->google2fa_secret,
-        $request->code,
-        1
-    );
-
-    if (!$valid) {
-        return back()->withErrors([
-            'code' => 'Invalid OTP'
-        ]);
-    }
-
-    Auth::guard('admin')->login($admin);
-
-    session()->forget('2fa:id');
-
-    $request->session()->regenerate();
-
-    return redirect()->route('admin.dashboard');
-}
 
 
     public function verify2FA(Request $request)
@@ -310,14 +224,15 @@ public function verify2FA_codex(Request $request)
             'code'=>'required'
         ]);
 
+
         $adminId = session('2fa:id');
 
         if(!$adminId){
-
             return redirect()
                 ->route('admin.login');
 
         }
+
 
 
         $admin = Admin::findOrFail($adminId);
@@ -328,9 +243,6 @@ public function verify2FA_codex(Request $request)
             $admin->google2fa_secret,
             $request->code
         );
-
-
-
 
         if(!$valid){
 
