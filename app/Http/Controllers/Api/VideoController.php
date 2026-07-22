@@ -315,7 +315,13 @@ public function show(Request $request, $id)
             $episodes = $episodes->where('season_id', $seasonId);
         }
         // Sort by id ascending
-$episodes = $episodes->sortBy('id')->values();
+//$episodes = $episodes->sortBy('id')->values();
+$episodes = $episodes
+    ->sortBy(function ($episode) {
+        preg_match('/(\d+)/', $episode->variant, $matches);
+        return isset($matches[1]) ? (int) $matches[1] : 0;
+    })
+    ->values();
 
         /* ------------------------------------
            📦 Seasons list
