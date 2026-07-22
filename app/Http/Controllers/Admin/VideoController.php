@@ -671,8 +671,7 @@ public function mostWatched()
 {
     $videos = Video::withCount('views')
         ->orderByDesc('views_count')
-        ->paginate(20)
-        ->get();
+        ->paginate(20);
 
     return view('admin.videos.most_watched', compact('videos'));
 }
