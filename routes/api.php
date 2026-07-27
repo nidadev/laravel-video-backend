@@ -58,6 +58,7 @@ Route::delete('/users/{id}', [UserApiController::class, 'destroy']);
  Route::post('/watch-history', [VideoController::class, 'storeWatchHistory']);
 Route::get('/notifications', [NotificationController::class, 'getnotify']);
 Route::get('/videos/{id}', [VideoController::class, 'show']);
+Route::delete('/watch-history', [VideoController::class, 'clearWatchHistory']);
 
 
 });

@@ -1103,7 +1103,16 @@ public function storeWatchHistory(Request $request)
     ]);
 }
 
+public function clearWatchHistory(Request $request)
+{
+    WatchHistory::where('user_id', $request->user()->id)->delete();
 
+    return response()->json([
+        'success' => true,
+        'message' => 'Watch history cleared successfully',
+        'data' => null,
+    ]);
+}
 
 
 
