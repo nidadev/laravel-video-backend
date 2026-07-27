@@ -586,18 +586,17 @@ public function seeall(Request $request)
         }
 
         // Trending Videos
-        if ($listType == 1) {
-            $query->where('is_trending', 1)
-                  ->orderBy('created_at', 'desc');
-        }
-        // Most Watched Videos
-        else {
-            $query->orderBy('views_count', 'desc');
-        }
-
-        // Pagination
-        //$videos = $query->orderBy('created_at', 'asc')->paginate(12);
-        $videos = $query->paginate(30);
+        $perPage = min((int) $request->input('per_page', 30), 100); 
+        if ($listType == 1)
+            {  
+             $query->where('is_trending', 1)->orderBy('created_at', 'desc');
+            }
+             else 
+            {   
+            $query->orderBy('views_count', 'desc')->orderBy('created_at', 'desc');
+            } 
+                     
+            $videos = $query->paginate($perPage);
 
         // FORMAT RESPONSE
         $videos->getCollection()->transform(function ($video) {
