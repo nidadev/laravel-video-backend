@@ -443,7 +443,9 @@ public function storePresigned(Request $request)
 
             'status' => 'processing',
 
-            'created_by' => auth()->id() ?? auth('admin')->id(),
+            //'created_by' => auth()->id() ?? auth('admin')->id(),
+
+            'created_by' => auth('admin')->id(),
 
             'year_of_published' => $request->year_of_published,
         ]);
