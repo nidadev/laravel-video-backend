@@ -421,12 +421,13 @@ public function storePresigned(Request $request)
 
     try {
 
-    dd([
-    'default_guard' => auth()->getDefaultDriver(),
+    \Log::info('Upload auth', [
     'web_check' => auth('web')->check(),
     'web_id' => auth('web')->id(),
+
     'admin_check' => auth('admin')->check(),
     'admin_id' => auth('admin')->id(),
+
     'auth_id' => auth()->id(),
 ]);
 
