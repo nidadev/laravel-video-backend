@@ -246,8 +246,7 @@ public function verifyOtp(Request $request)
     if (!$activeSubscription) {
         $freePlan = Plan::where('name', 'Free')->first();
         if ($freePlan) {
-            $endDate = $freePlan->duration_days > 0 ? now()->addDays($freePlan->duration_days) : now()
->addYears(20);
+            $endDate = $freePlan->duration_days > 0 ? now()->addDays($freePlan->duration_days) : now()->addYears(20);
             $activeSubscription = Subscription::create([
                 'user_id' => $user->id,
                 'plan_id' => $freePlan->id,
