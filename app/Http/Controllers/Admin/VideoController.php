@@ -569,9 +569,12 @@ public function storePresigned(Request $request)
     } catch (\Exception $e) {
 
 
-        \Log::error(
-            'Presigned store failed: '.$e->getMessage()
-        );
+        \Log::error('Presigned store failed', [
+    'message' => $e->getMessage(),
+    'file' => $e->getFile(),
+    'line' => $e->getLine(),
+    'trace' => $e->getTraceAsString(),
+]);
 
 
         return response()->json([
