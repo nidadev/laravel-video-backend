@@ -10,14 +10,14 @@ class MediaConvertService
     public function __construct()
     {
         $this->client = new MediaConvertClient([
-            'version' => 'latest',
-            'region'  => env('AWS_DEFAULT_REGION', 'us-east-1'),
-            'credentials' => [
-                'key' => env('AWS_ACCESS_KEY_ID'),
-                'secret' => env('AWS_SECRET_ACCESS_KEY'),
-            ],
-            'endpoint' => env('AWS_MEDIACONVERT_ENDPOINT'),
-        ]);
+    'version' => 'latest',
+    'region'  => config('filesystems.disks.s3.region'),
+    'credentials' => [
+        'key' => config('filesystems.disks.s3.key'),
+        'secret' => config('filesystems.disks.s3.secret'),
+    ],
+    'endpoint' => env('AWS_MEDIACONVERT_ENDPOINT'),
+]);
     }
 
     public function createHlsJob($inputS3Url, $outputS3Folder, $nameModifier)
