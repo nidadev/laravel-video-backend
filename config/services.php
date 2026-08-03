@@ -45,5 +45,9 @@ return [
     'secret' => env('STRIPE_SECRET'),
     'public' => env('STRIPE_PUBLIC'),
 ],
+'mediaconvert' => [
+    'role' => env('AWS_MEDIACONVERT_ROLE'),
+    'endpoint' => env('AWS_MEDIACONVERT_ENDPOINT'),
+],
 
 ];

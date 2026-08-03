@@ -16,14 +16,13 @@ class MediaConvertService
         'key' => config('filesystems.disks.s3.key'),
         'secret' => config('filesystems.disks.s3.secret'),
     ],
-    'endpoint' => env('AWS_MEDIACONVERT_ENDPOINT'),
-]);
+'endpoint' => config('services.mediaconvert.endpoint'),]);
     }
 
     public function createHlsJob($inputS3Url, $outputS3Folder, $nameModifier)
     {
         $job = $this->client->createJob([
-            'Role' => env('AWS_MEDIACONVERT_ROLE'),
+'Role' => config('services.mediaconvert.role'),
             'Settings' => [
                 'Inputs' => [
                     [
