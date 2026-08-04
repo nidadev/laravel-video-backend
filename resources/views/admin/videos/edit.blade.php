@@ -353,7 +353,7 @@ const type = 'video';
             return;
         }
 
-        alert("Video will be converted to streaming format (HLS). Please wait after update.");
+        //alert("Video will be converted to streaming format (HLS). Please wait after update.");
     }
     const progressBar = e.target.closest('.video-file-item').querySelector(
         type === 'video' ? '.video-progress' : '.image-progress'
