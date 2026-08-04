@@ -28,7 +28,7 @@
             <th>Thumbnail</th>
             <th>Title</th>
             <th>Category</th>
-            <th>Status</th>
+            <!--th>Status</th-->
             <th>Created</th>
                     <th>Trending</th>
 
@@ -48,7 +48,7 @@
               </td>
               <td>{{ $video->title }}</td>
               <td>{{ $video->category->name ?? '—' }}</td>
-              <td>
+              <!--td>
                 @php
                   $badge = [
                     'ready' => 'success',
@@ -58,7 +58,7 @@
                   ][$video->status] ?? 'light';
                 @endphp
                 <span class="badge bg-{{ $badge }}">{{ ucfirst($video->status) }}</span>
-              </td>
+              </td-->
               <td>{{ $video->created_at->format('Y-m-d') }}</td>
                 <td>
                 <form method="POST" action="{{ route('admin.videos.toggleTrending', $video->id) }}">
