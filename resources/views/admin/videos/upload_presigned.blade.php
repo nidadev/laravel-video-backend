@@ -266,7 +266,9 @@ const file = videoInput.files[0];
 
   const result = await storeRes.json();
   if (result.success) {
-    window.location.href = "{{ route('admin.videos') }}";
+    localStorage.setItem('success', result.message);
+ window.location.href = result.redirect;
+
 } else {
     alert(result.message || result.error || 'Upload failed!');
 }
