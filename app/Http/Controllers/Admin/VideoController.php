@@ -561,6 +561,7 @@ public function storePresigned(Request $request)
             'message' => '✅ Video uploaded and HLS job started!',
 
             'video_id' => $video->id,
+            'redirect' => route('admin.videos'),
 
         ]);
 
