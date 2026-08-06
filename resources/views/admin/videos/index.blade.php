@@ -97,3 +97,20 @@
   </div>
 </div>
 @endsection
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const message = sessionStorage.getItem('success');
+
+    if (message) {
+        document.querySelector('.container').insertAdjacentHTML(
+            'afterbegin',
+            `<div class="alert alert-success alert-dismissible fade show">
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>`
+        );
+
+        sessionStorage.removeItem('success');
+    }
+});
+</script>

@@ -265,12 +265,14 @@ const file = videoInput.files[0];
   });
 
   const result = await storeRes.json();
-  if (result.success) {
-    localStorage.setItem('success', result.message);
- window.location.href = result.redirect;
+  
+if (result.success) {
+    // Save the message before redirecting
+    sessionStorage.setItem('success', result.message);
 
+    window.location.href = result.redirect;
 } else {
-    alert(result.message || result.error || 'Upload failed!');
+    alert(result.message || result.error);
 }
 });
 
