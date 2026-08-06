@@ -561,11 +561,20 @@ public function storePresigned(Request $request)
             'message' => '✅ Video uploaded and HLS job started!',
 
             'video_id' => $video->id,
-            'redirect' => route('admin.videos'),
-
+             'redirect' => route('admin.videos'),  
+   
         ]);
 
+    } catch (\Exception $e) {
 
+        \Log::error('Presigned store failed', [
+            'message' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+
+    
 
     } catch (\Exception $e) {
 
