@@ -265,7 +265,11 @@ const file = videoInput.files[0];
   });
 
   const result = await storeRes.json();
-  alert(result.message || result.error || 'Upload complete!');
+  if (result.success) {
+    window.location.href = "{{ route('admin.videos') }}";
+} else {
+    alert(result.message || result.error || 'Upload failed!');
+}
 });
 
 // S3 upload function
