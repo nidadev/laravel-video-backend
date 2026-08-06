@@ -233,25 +233,39 @@ async function uploadToS3(file, url, progressBarElement) {
         xhr.open("PUT", url);
 
         xhr.upload.addEventListener("progress", e => {
-            if(e.lengthComputable && progressBarElement){
-                const percent = Math.round((e.loaded / e.total) * 100);
-                progressBarElement.style.display = "block";
-                progressBarElement.querySelector(".progress-bar").style.width = percent + "%";
-                progressBarElement.querySelector(".progress-bar").innerText = percent + "%";
-            }
-        });
+    if (e.lengthComputable && progressBarElement) {
+        const percent = Math.round((e.loaded / e.total) * 100);
 
-        xhr.onload = () => {
-            if(xhr.status === 200 || xhr.status === 204){
-                progressBarElement.querySelector(".progress-bar").style.width = "100%";
-                progressBarElement.querySelector(".progress-bar").innerText = "100%";
-                finishUpload(); // ✅ mark upload finished
-                resolve();
-            } else {
-                finishUpload();
-                reject(`Upload failed with status ${xhr.status}`);
+        progressBarElement.style.display = "block";
+
+        const bar = progressBarElement.querySelector(".progress-bar");
+        if (bar) {
+            bar.style.width = percent + "%";
+            bar.innerText = percent + "%";
+        }
+    }
+});
+
+xhr.onload = () => {
+
+    finishUpload();
+
+    if (xhr.status === 200 || xhr.status === 204) {
+
+        if (progressBarElement) {
+            const bar = progressBarElement.querySelector(".progress-bar");
+            if (bar) {
+                bar.style.width = "100%";
+                bar.innerText = "100%";
             }
-        };
+        }
+
+        resolve();
+
+    } else {
+        reject(`Upload failed with status ${xhr.status}`);
+    }
+};
 
         xhr.onerror = () => {
             finishUpload();
@@ -324,21 +338,41 @@ document.getElementById('video-files-container').addEventListener('click', funct
 });
 
 // Thumbnail upload
-document.getElementById('thumbnailFile').addEventListener('change', async function() {
+document.getElementById('thumbnailFile').addEventListener('change', async function () {
+
     const file = this.files[0];
-    if(!file) return;
+    if (!file) return;
 
-    const res = await fetch("{{ route('admin.videos.presigned.url') }}", {
-        method:'POST',
-        headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Content-Type':'application/json'},
-        body: JSON.stringify({ filename:file.name, content_type:file.type, type:'thumbnail' })
-    });
-    const data = await res.json();
-    const progressBar = document.querySelector('.image-progress');
-    await uploadToS3(file, data.url, progressBar);
+    try {
 
-    document.getElementById('thumbnail-url').value = data.file_url;
-    document.getElementById('thumbnail-preview').src = data.file_url;
+        const res = await fetch("{{ route('admin.videos.presigned.url') }}", {
+            method: "POST",
+            headers: {
+                "X-CSRF-TOKEN": "{{ csrf_token() }}",
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                filename: file.name,
+                content_type: file.type,
+                type: "thumbnail"
+            })
+        });
+
+        const data = await res.json();
+
+        // Upload without progress bar
+        await uploadToS3(file, data.url, null);
+
+        document.getElementById("thumbnail-url").value = data.file_url;
+        document.getElementById("thumbnail-preview").src = data.file_url;
+
+        console.log("Thumbnail uploaded:", data.file_url);
+
+    } catch (e) {
+        console.error(e);
+        alert("Thumbnail upload failed");
+    }
+
 });
 
 // Video / Image upload with per-item progress
@@ -366,7 +400,7 @@ const type = 'video';
     });
     const data = await res.json();
 
-    await uploadToS3(file, data.url, progressBar);
+    await uploadToS3(file, data.url, null);
 
     const hiddenInput = e.target.parentNode.querySelector(
         type === 'video' ? 'input[name*="[file_url]"]' : 'input[name*="[image]"]'
@@ -375,11 +409,17 @@ const type = 'video';
 });
 
 // 🚫 Prevent update while uploads are running
-document.getElementById('editVideoForm').addEventListener('submit', function(e){
+document.getElementById('editVideoForm').addEventListener('submit', function (e) {
+
+    console.log("Thumbnail being submitted:",
+        document.getElementById('thumbnail-url').value);
+
     if (isUploading) {
         e.preventDefault();
-        alert("Files are still uploading. Please wait until uploads finish.");
+        alert("Files are still uploading.");
+        return;
     }
+
 });
 window.addEventListener('beforeunload', function (e) {
     if (isUploading) {
