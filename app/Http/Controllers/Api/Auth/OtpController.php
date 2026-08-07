@@ -20,7 +20,7 @@ use App\Mail\SendOtpMail;
 class OtpController extends Controller
 {
     //
-    public function sendOtp(Request $request)
+    public function sendOtp2(Request $request)
 {
     $request->validate([
         'email' => 'nullable|email|required_without:phone',
@@ -83,87 +83,203 @@ class OtpController extends Controller
         return $this->responseJson('Failed to send OTP.', ['error' => $e->getMessage()], 500, false);
     }
 }
-public function sendOtp2(Request $request)
+
+public function sendOtp(Request $request)
 {
-    try {
-        $request->validate([
-            'email' => 'required|email'
-        ]);
-    } catch (ValidationException $e) {
-        return response()->json([
-            'message' => $e->validator->errors()->first(),
-            'data' => [],
-            'response' => 422,
-            'success' => false,
-        ], 422);
+    $validator = Validator::make($request->all(), [
+        'email' => [
+            'nullable',
+            'email',
+            'required_without:phone',
+        ],
+        'phone' => [
+            'nullable',
+            'string',
+            'required_without:email',
+            'regex:/^\+[1-9]\d{7,14}$/',
+        ],
+    ]);
+
+    if ($validator->fails()) {
+        return $this->responseJson(
+            $validator->errors()->first(),
+            [],
+            422,
+            false
+        );
     }
 
-    $email = $request->email;
-    if ($email == 'demo@gmail.com') {
-        Otp::where('email', $email)->delete(); // clear old OTPs
+    $email = $request->input('email');
+    $phone = $request->input('phone');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Demo phone
+    |--------------------------------------------------------------------------
+    | Supported:
+    | +11234567890
+    | 1234567890
+    |
+    | But store/use the demo phone internally as E.164.
+    |--------------------------------------------------------------------------
+    */
+
+    if ($phone === '1234567890') {
+        $phone = '+11234567890';
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Demo Email
+    |--------------------------------------------------------------------------
+    */
+
+    if ($email === 'demo@gmail.com') {
+
+        Otp::where('email', $email)->delete();
 
         Otp::create([
             'email' => $email,
+            'phone' => null,
             'otp_code' => 1234,
-            'expires_at' => now()->addYears(1) // never expire for demo
+            'expires_at' => now()->addYears(1),
         ]);
 
-        return response()->json([
-            'message' => 'Demo OTP generated',
-            'data' => [
+        return $this->responseJson(
+            'Demo OTP generated',
+            [
                 'email' => $email,
-                'otp_debug' => 1234
-            ],
-            'response' => 200,
-            'success' => true,
-        ]);
+                'phone' => null,
+                'otp_debug' => 1234,
+            ]
+        );
     }
 
-    // Rate limit: max 3 OTP in last 2 minutes
-    $recent = Otp::where('email', $email)
-        ->where('created_at', '>=', now()->subMinutes(2))
-        ->count();
+    /*
+    |--------------------------------------------------------------------------
+    | Demo Phone
+    |--------------------------------------------------------------------------
+    */
 
-    if ($recent >= 3) {
-        return response()->json([
-            'message' => 'Too many OTP requests. Please wait a moment.',
-            'data' => [],
-            'response' => 429,
-            'success' => false,
+    if ($phone === '+11234567890') {
+
+        Otp::where('phone', $phone)->delete();
+
+        Otp::create([
+            'email' => null,
+            'phone' => $phone,
+            'otp_code' => 1234,
+            'expires_at' => now()->addYears(1),
         ]);
+
+        return $this->responseJson(
+            'Demo OTP generated',
+            [
+                'email' => null,
+                'phone' => $phone,
+                'otp_debug' => 1234,
+            ]
+        );
     }
 
-    $otp = rand(1000, 9999);
+    /*
+    |--------------------------------------------------------------------------
+    | Rate limiting
+    |--------------------------------------------------------------------------
+    */
 
-    // Save OTP
+    $recentQuery = Otp::where(
+        'created_at',
+        '>=',
+        now()->subMinutes(2)
+    );
+
+    if ($email) {
+        $recentQuery->where('email', $email);
+    } else {
+        $recentQuery->where('phone', $phone);
+    }
+
+    if ($recentQuery->count() >= 3) {
+        return $this->responseJson(
+            'Too many OTP requests. Please wait a moment.',
+            [],
+            429,
+            false
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Generate OTP
+    |--------------------------------------------------------------------------
+    */
+
+    $otp = random_int(1000, 9999);
+
     Otp::create([
         'email' => $email,
+        'phone' => $phone,
         'otp_code' => $otp,
         'expires_at' => now()->addMinutes(15),
     ]);
 
-    // Send Email
     try {
-        Mail::to($email)->send(new SendOtpMail($otp));
-    } catch (\Exception $e) {
-        return response()->json([
-            'message' => 'Failed to send OTP email.',
-            'data' => ['error' => $e->getMessage()],
-            'response' => 500,
-            'success' => false,
-        ]);
-    }
 
-    return response()->json([
-        'message' => 'OTP sent successfully to your email',
-        'data' => [
-            'email' => $email,
-            'otp_debug' => $otp, // REMOVE IN PRODUCTION
-        ],
-        'response' => 200,
-        'success' => true,
-    ]);
+        /*
+        |--------------------------------------------------------------------------
+        | Email OTP
+        |--------------------------------------------------------------------------
+        */
+
+        if ($email) {
+
+            Mail::to($email)->send(
+                new SendOtpMail($otp)
+            );
+
+            return $this->responseJson(
+                'OTP sent successfully',
+                [
+                    'email' => $email,
+                    'phone' => null,
+                ]
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Phone OTP
+        |--------------------------------------------------------------------------
+        */
+
+        $this->sendSmsOtp($phone, $otp);
+
+        return $this->responseJson(
+            'OTP sent successfully',
+            [
+                'email' => null,
+                'phone' => $phone,
+            ]
+        );
+
+    } catch (\Exception $e) {
+
+        \Log::error(
+            'OTP sending failed: ' . $e->getMessage()
+        );
+
+        return $this->responseJson(
+            'Failed to send OTP.',
+            [
+                'error' => $e->getMessage(),
+            ],
+            500,
+            false
+        );
+    }
 }
+
 
 private function sendSmsOtp(string $phone, int $otp): void
 {
@@ -186,7 +302,7 @@ private function responseJson(string $message, array $data, int $status = 200, b
 
 
 
-public function verifyOtp(Request $request)
+public function verifyOtp2(Request $request)
 {
     $request->validate([
         'email' => 'nullable|email|required_without:phone',
@@ -266,59 +382,166 @@ public function verifyOtp(Request $request)
     ]);
 }
 
-public function verifyOtp2(Request $request)
+public function verifyOtp(Request $request)
 {
-    $request->validate([
-        'email' => 'required|email',
-        'otp'   => 'required'
+    $validator = Validator::make($request->all(), [
+        'email' => [
+            'nullable',
+            'email',
+            'required_without:phone',
+        ],
+
+        'phone' => [
+            'nullable',
+            'string',
+            'required_without:email',
+            'regex:/^\+[1-9]\d{7,14}$/',
+        ],
+
+        'otp' => [
+            'required',
+            'digits:4',
+        ],
     ]);
 
-    $email = $request->email;
+    if ($validator->fails()) {
+        return $this->responseJson(
+            $validator->errors()->first(),
+            [],
+            422,
+            false
+        );
+    }
 
-    // ✅ Validate OTP
-    $otpRecord = Otp::where('email', $email)
-        ->where('otp_code', $request->otp)
+    $email = $request->input('email');
+    $phone = $request->input('phone');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Demo phone
+    |--------------------------------------------------------------------------
+    */
+
+    if ($phone === '1234567890') {
+        $phone = '+11234567890';
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Find OTP
+    |--------------------------------------------------------------------------
+    */
+
+    $otpQuery = Otp::where('otp_code', $request->otp);
+
+    if ($email) {
+        $otpQuery->where('email', $email);
+    } else {
+        $otpQuery->where('phone', $phone);
+    }
+
+    $otpRecord = $otpQuery
         ->latest()
         ->first();
 
     if (!$otpRecord || $otpRecord->isExpired()) {
-        return response()->json([
-            'message' => 'Invalid or expired OTP',
-            'data' => [],
-            'response' => 401,
-            'success' => false,
-        ]);
+
+        return $this->responseJson(
+            'Invalid or expired OTP',
+            [],
+            401,
+            false
+        );
     }
 
-    /* ------------------------------------
-       👤 Find or Create User
-    ------------------------------------ */
-    $user = User::where('email', $email)->first();
-    $isNewUser = false;
+    /*
+    |--------------------------------------------------------------------------
+    | Find or create user
+    |--------------------------------------------------------------------------
+    */
+
+    if ($email) {
+
+        $user = User::where('email', $email)->first();
+
+    } else {
+
+        // IMPORTANT:
+        // Exact E.164 lookup
+        $user = User::where('phone', $phone)->first();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Create user
+    |--------------------------------------------------------------------------
+    */
 
     if (!$user) {
-        $isNewUser = true;
+
         $user = User::create([
             'email' => $email,
+            'phone' => $phone,
             'name' => 'User_' . Str::random(5),
-            'password' => bcrypt(Str::random(10)),
+            'password' => bcrypt(Str::random(20)),
         ]);
+
+    } else {
+
+        /*
+        |--------------------------------------------------------------------------
+        | Update missing email/phone
+        |--------------------------------------------------------------------------
+        */
+
+        $updates = [];
+
+        if ($email && !$user->email) {
+            $updates['email'] = $email;
+        }
+
+        if ($phone && !$user->phone) {
+            $updates['phone'] = $phone;
+        }
+
+        if (!empty($updates)) {
+            $user->update($updates);
+        }
     }
 
-    // ❌ Delete OTPs
-    Otp::where('email', $email)->delete();
+    /*
+    |--------------------------------------------------------------------------
+    | Delete used OTP
+    |--------------------------------------------------------------------------
+    */
 
-    /* ------------------------------------
-       🔐 JWT Token
-    ------------------------------------ */
-    JWTAuth::factory()->setTTL(10080); // 7 days
+    if ($email) {
+
+        Otp::where('email', $email)
+            ->delete();
+
+    } else {
+
+        Otp::where('phone', $phone)
+            ->delete();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | JWT
+    |--------------------------------------------------------------------------
+    */
+
+    JWTAuth::factory()->setTTL(10080);
+
     $token = JWTAuth::fromUser($user);
 
-    /* ------------------------------------
-       📌 Subscription Handling
-    ------------------------------------ */
+    /*
+    |--------------------------------------------------------------------------
+    | Subscription
+    |--------------------------------------------------------------------------
+    */
 
-    // 1️⃣ Get latest active subscription (paid or free)
     $activeSubscription = Subscription::with('plan')
         ->where('user_id', $user->id)
         ->where('status', 'active')
@@ -326,58 +549,64 @@ public function verifyOtp2(Request $request)
         ->latest('end_date')
         ->first();
 
-    // 2️⃣ If no active subscription exists → give FREE plan
     if (!$activeSubscription) {
+
         $freePlan = Plan::where('name', 'Free')->first();
+
         if ($freePlan) {
+
+            $endDate = $freePlan->duration_days > 0
+                ? now()->addDays($freePlan->duration_days)
+                : now()->addYears(20);
+
             $activeSubscription = Subscription::create([
                 'user_id' => $user->id,
                 'plan_id' => $freePlan->id,
                 'start_date' => now(),
-                'end_date' => now()->addDays(7), // Free trial 7 days
+                'end_date' => $endDate,
                 'status' => 'active',
             ]);
+
             $activeSubscription->load('plan');
         }
     }
 
-    /* ------------------------------------
-       ✅ RESPONSE
-    ------------------------------------ */
-    return response()->json([
-        'message' => 'OTP verified successfully',
-        'data' => [
+    /*
+    |--------------------------------------------------------------------------
+    | Response
+    |--------------------------------------------------------------------------
+    */
+
+    return $this->responseJson(
+        'OTP verified successfully',
+        [
             'token' => $token,
             'token_type' => 'bearer',
             'expires_in' => JWTAuth::factory()->getTTL() * 60,
-            'user' => $user,
+            'user' => $user->fresh(),
             'subscription' => $activeSubscription,
-        ],
-        'response' => 200,
-        'success' => true,
-    ]);
+        ]
+    );
 }
+
+
 
 
 private function normalizePhone(?string $phone): ?string
 {
-   if (!$phone) {
-       return null;
-   }
-   $phone = preg_replace('/[^0-9+]/', '', trim($phone));
+    if (!$phone) {
+        return null;
+    }
+
+    $phone = trim($phone);
+
+    // Demo phone
     if ($phone === '1234567890') {
-        return '1234567890';
+        return '+11234567890';
     }
-    if (str_starts_with($phone, '+')) {
-        return $phone;
-    }
-    if (str_starts_with($phone, '0')) {
-        return '+92' . ltrim($phone, '0');
-    }
-    if (strlen($phone) === 10) {
-        return '+1' . $phone;
-    }
-    return '+' . $phone;
+
+    // Real phones must already be E.164
+    return $phone;
 }
 
 }
