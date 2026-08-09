@@ -46,6 +46,7 @@ class OtpController extends Controller
         return $this->responseJson('Demo OTP generated', [
             'email' => $email ?: 'demo@gmail.com',
             'phone' => $phone,
+            'otp' => 1234,
             'otp_debug' => 1234,
         ]);
     }
@@ -71,12 +72,16 @@ class OtpController extends Controller
             Mail::to($email)->send(new SendOtpMail($otp));
             return $this->responseJson('OTP sent successfully to your email', [
                 'email' => $email,
+                'phone' => null,
+                'otp' => $otp,
                 'otp_debug' => $otp,
             ]);
         }
         $this->sendSmsOtp($phone, $otp);
         return $this->responseJson('OTP sent successfully to your phone', [
+            'email' => null,
             'phone' => $phone,
+            'otp' => $otp,
             'otp_debug' => $otp,
         ]);
     } catch (\Exception $e) {
@@ -150,6 +155,7 @@ public function sendOtp(Request $request)
             [
                 'email' => $email,
                 'phone' => null,
+                'otp' => 1234,
                 'otp_debug' => 1234,
             ]
         );
@@ -177,6 +183,7 @@ public function sendOtp(Request $request)
             [
                 'email' => null,
                 'phone' => $phone,
+                'otp' => 1234,
                 'otp_debug' => 1234,
             ]
         );
@@ -243,6 +250,7 @@ public function sendOtp(Request $request)
                 [
                     'email' => $email,
                     'phone' => null,
+                    'otp' => $otp,
                 ]
             );
         }
@@ -260,6 +268,7 @@ public function sendOtp(Request $request)
             [
                 'email' => null,
                 'phone' => $phone,
+                'otp' => $otp,
             ]
         );
 
