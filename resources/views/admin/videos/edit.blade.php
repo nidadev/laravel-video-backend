@@ -362,6 +362,10 @@ document.getElementById('thumbnailFile').addEventListener('change', async functi
         const data = await res.json();
 
         // Upload without progress bar
+        if (!res.ok || !data.success) {
+            throw new Error(data.details || data.error || 'Failed to create thumbnail upload URL');
+        }
+
         await uploadToS3(file, data.url, null);
 
         document.getElementById("thumbnail-url").value = data.file_url;
@@ -380,6 +384,7 @@ document.getElementById('thumbnailFile').addEventListener('change', async functi
 document.getElementById('video-files-container').addEventListener('change', async function(e){
 if(!e.target.classList.contains('video-file')) return;
     const file = e.target.files[0];
+    if(!file) return;
 const type = 'video';   
    if(type === 'video'){
         if(!file.name.toLowerCase().endsWith('.mp4')){
@@ -394,19 +399,29 @@ const type = 'video';
         type === 'video' ? '.video-progress' : '.image-progress'
     );
 
-    const res = await fetch("{{ route('admin.videos.presigned.url') }}", {
-        method:'POST',
-        headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Content-Type':'application/json'},
-        body: JSON.stringify({ filename:file.name, content_type:file.type, type })
-    });
-    const data = await res.json();
+    try {
+        const res = await fetch("{{ route('admin.videos.presigned.url') }}", {
+            method:'POST',
+            headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Content-Type':'application/json'},
+            body: JSON.stringify({ filename:file.name, content_type:file.type, type })
+        });
+        const data = await res.json();
 
-    await uploadToS3(file, data.url, null);
+        if (!res.ok || !data.success) {
+            throw new Error(data.details || data.error || 'Failed to create video upload URL');
+        }
 
-    const hiddenInput = e.target.parentNode.querySelector(
-        type === 'video' ? 'input[name*="[file_url]"]' : 'input[name*="[image]"]'
-    );
-    if(hiddenInput) hiddenInput.value = data.file_url;
+        await uploadToS3(file, data.url, progressBar);
+
+        const hiddenInput = e.target.parentNode.querySelector(
+            type === 'video' ? 'input[name*="[file_url]"]' : 'input[name*="[image]"]'
+        );
+        if(hiddenInput) hiddenInput.value = data.file_url;
+    } catch (error) {
+        console.error(error);
+        alert(error.message || 'Video upload failed');
+        e.target.value = '';
+    }
 });
 
 // 🚫 Prevent update while uploads are running
