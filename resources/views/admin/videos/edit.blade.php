@@ -231,6 +231,7 @@ async function uploadToS3(file, url, progressBarElement) {
     return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open("PUT", url);
+        xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
 
         xhr.upload.addEventListener("progress", e => {
     if (e.lengthComputable && progressBarElement) {

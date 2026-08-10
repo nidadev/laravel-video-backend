@@ -320,6 +320,7 @@ async function uploadFileToS3(file, url, progressBar){
   return new Promise((resolve,reject)=>{
     const xhr = new XMLHttpRequest();
     xhr.open('PUT', url);
+    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
 
     xhr.upload.addEventListener('progress', e=>{
       if(e.lengthComputable){
