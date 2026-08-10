@@ -934,7 +934,7 @@ public function googlePayPurchase(Request $request)
         'user_id' => 'required|exists:users,id',
         'plan_id' => 'required|exists:plans,id',
         'purchase_date' => 'required|date',
-        'purchase_token' => 'required|string|unique:google_pay_purchases,googlepay_transaction_id',
+        'purchase_token' => 'required|string',
         'payment_method' => 'required|string',
         'product_id' => 'required|string',
         'package_name' => 'nullable|string',
@@ -956,20 +956,24 @@ public function googlePayPurchase(Request $request)
             : $startDate->copy()->addDays($plan->duration_days - 1)->endOfDay();
 
         // 1️⃣ Store Google Pay Payment
-        $payment = GooglePayPurchase::create([
-            'user_id' => $user->id,
-            'plan_id' => $plan->id,
-            'googlepay_transaction_id' => $request->purchase_token,
-            'googlepay_email' => 'googlepay@user.com',
-            'payment_response' => [
+        $payment = GooglePayPurchase::updateOrCreate(
+            [
+                'googlepay_transaction_id' => $request->purchase_token,
+            ],
+            [
+                'user_id' => $user->id,
+                'plan_id' => $plan->id,
+                'googlepay_email' => 'googlepay@user.com',
+                'payment_response' => [
                 'payment_method' => $request->payment_method,
                 'purchase_token' => $request->purchase_token,
                 'purchase_date' => $startDate->toDateTimeString(),
                 'product_id' => $request->product_id,
                 'google_play_verification' => $verification,
-            ],
-            'status' => 'completed'
-        ]);
+                ],
+                'status' => 'completed',
+            ]
+        );
 
         // 2️⃣ Delete all expired subscriptions of this user
         Subscription::where('user_id', $user->id)
