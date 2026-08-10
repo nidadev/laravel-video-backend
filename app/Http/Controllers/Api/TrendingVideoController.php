@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Models\TrendingVideo;
+use App\Models\Video;
 use App\Services\MediaUrlService;
 
 class TrendingVideoController extends Controller
@@ -13,21 +13,27 @@ class TrendingVideoController extends Controller
   public function index()
 {
     try {
-        $videos = TrendingVideo::latest()->get([
-            'id',
-            'title',
-            'description',
-            'thumbnail',
-            'video_url',
-            'created_at'
-        ]);
+        $videos = Video::with(['files' => function ($query) {
+                $query->orderBy('season_id')->orderBy('id');
+            }])
+            ->where('status', 'ready')
+            ->where('is_trending', true)
+            ->latest()
+            ->get()
+            ->map(function ($video) {
+                $firstFile = $video->files->first();
 
-        $videos->transform(function ($video) {
-            $video->thumbnail = MediaUrlService::cdnUrl($video->thumbnail);
-            $video->video_url = MediaUrlService::cdnUrl($video->video_url);
-
-            return $video;
-        });
+                return [
+                    'id' => $video->id,
+                    'title' => $video->title,
+                    'description' => $video->description,
+                    'thumbnail' => MediaUrlService::cdnUrl($video->thumbnail),
+                    'video_url' => MediaUrlService::cdnUrl(optional($firstFile)->file_url),
+                    'created_at' => $video->created_at,
+                ];
+            })
+            ->filter(fn($video) => !empty($video['video_url']))
+            ->values();
 
         // Generate 2-hour temporary URLs for each video and thumbnail
         /*$videos->transform(function ($video) {
