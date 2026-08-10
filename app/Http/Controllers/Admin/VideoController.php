@@ -183,10 +183,14 @@ public function generatePresignedUrl(Request $request)
         $presignedRequest = $s3->createPresignedRequest($cmd, '+20 minutes');
         $presignedUrl = (string) $presignedRequest->getUri();
 
+        $fileUrl = in_array($request->type, ['thumbnail', 'video_image'], true)
+            ? MediaUrlService::cdnUrl($key)
+            : $this->s3ObjectUrl($bucket, $key);
+
         return response()->json([
             'success' => true,
             'url' => $presignedUrl,
-            'file_url' => $this->s3ObjectUrl($bucket, $key),
+            'file_url' => $fileUrl,
         ]);
     } catch (\Exception $e) {
         \Log::error('Presigned URL generation failed', [

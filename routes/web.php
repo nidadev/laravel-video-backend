@@ -18,7 +18,7 @@ Route::get('/', function () {
 | Admin Login (No Auth Required)
 |--------------------------------------------------------------------------
 */
-Route::prefix('admin')->middleware('guest:admin')->group(function () {
+Route::prefix('admin')->group(function () {
 
     Route::get('/login', [AuthController::class, 'showLoginForm'])
         ->name('admin.login');

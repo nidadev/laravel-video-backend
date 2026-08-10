@@ -41,7 +41,7 @@
               <td>{{ $video->id }}</td>
               <td>
                 @if($video->thumbnail)
-                  <img src="{{ $video->thumbnail }}" alt="Thumbnail" width="80" class="rounded">
+                  <img src="{{ \App\Services\MediaUrlService::cdnUrl($video->thumbnail) }}" alt="Thumbnail" width="80" class="rounded">
                 @else
                   <span class="text-muted">No Thumbnail</span>
                 @endif

@@ -82,7 +82,7 @@
           {{-- Thumbnail --}}
           <div class="mb-3">
               <label>Thumbnail</label>
-<img src="{{ $video->thumbnail }}" 
+<img src="{{ \App\Services\MediaUrlService::cdnUrl($video->thumbnail) }}"
 width="150" 
 class="mb-2" 
 id="thumbnail-preview">              <input type="file" name="thumbnail_file" class="form-control" id="thumbnailFile">
