@@ -296,10 +296,10 @@ public function sendOtp(Request $request)
 
 private function sendSmsOtp(string $phone, int $otp): void
 {
-    $sid = env('TWILIO_SID');
-    $token = env('TWILIO_AUTH_TOKEN');
-    $from = env('TWILIO_FROM') ?: env('TWILIO_PHONE_NUMBER');
-    $messagingServiceSid = env('TWILIO_MESSAGING_SERVICE_SID');
+    $sid = config('services.twilio.sid');
+    $token = config('services.twilio.token');
+    $from = config('services.twilio.from');
+    $messagingServiceSid = config('services.twilio.messaging_service_sid');
 
     if (!$sid || !$token || (!$from && !$messagingServiceSid)) {
         throw new \RuntimeException('Twilio SMS configuration is incomplete.');
