@@ -248,7 +248,10 @@ if (!empty($user->device_token)) {
 public function getPlanDetails()
 {
     try {
-        $plans = Plan::select('id', 'name', 'price', 'duration_days', 'ads_enabled')->get();
+        $plans = Plan::select('id', 'name', 'price', 'duration_days', 'ads_enabled')
+            ->whereIn('name', ['Monthly', 'Annual'])
+            ->orderByRaw("CASE name WHEN 'Monthly' THEN 1 WHEN 'Annual' THEN 2 ELSE 3 END")
+            ->get();
 
         if ($plans->isEmpty()) {
             return response()->json([

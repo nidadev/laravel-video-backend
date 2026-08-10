@@ -8,7 +8,21 @@ use App\Models\Video;
 class VideoFile extends Model
 {
     //
-    protected $fillable = ['video_id', 'variant', 'manifest_url', 'file_url','mp4_url','image', 'drm', 'duration','meta','season_id'];
+    protected $fillable = [
+        'video_id',
+        'variant',
+        'manifest_url',
+        'file_url',
+        'mp4_url',
+        'image',
+        'drm',
+        'duration',
+        'meta',
+        'season_id',
+        'job_id',
+        'job_status',
+        'job_error',
+    ];
 
     protected $casts = [
         'meta' => 'array',

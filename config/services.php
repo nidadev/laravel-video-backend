@@ -36,18 +36,34 @@ return [
     ],
 
     'twilio' => [
-    'sid' => env('TWILIO_SID'),
-    'token' => env('TWILIO_AUTH_TOKEN'),
-    'from' => env('TWILIO_PHONE_NUMBER'),
-],
+        'sid' => env('TWILIO_SID'),
+        'token' => env('TWILIO_AUTH_TOKEN'),
+        'from' => env('TWILIO_PHONE_NUMBER'),
+    ],
 
-'stripe' => [
-    'secret' => env('STRIPE_SECRET'),
-    'public' => env('STRIPE_PUBLIC'),
-],
-'mediaconvert' => [
-    'role' => env('AWS_MEDIACONVERT_ROLE'),
-    'endpoint' => env('AWS_MEDIACONVERT_ENDPOINT'),
-],
+    'stripe' => [
+        'secret' => env('STRIPE_SECRET'),
+        'public' => env('STRIPE_PUBLIC'),
+    ],
+
+    'mediaconvert' => [
+        'role' => env('AWS_MEDIACONVERT_ROLE'),
+        'endpoint' => env('AWS_MEDIACONVERT_ENDPOINT'),
+    ],
+
+    'cloudfront' => [
+        'url' => env('CLOUDFRONT_URL', 'https://cdn.bitdrama.io'),
+    ],
+
+    'media' => [
+        'raw_bucket' => env('AWS_RAW_VIDEO_BUCKET', env('AWS_BUCKET')),
+        'processed_bucket' => env('AWS_PROCESSED_VIDEO_BUCKET', 'bitdrama-processed-videos-dev-643067044976'),
+        'thumbnail_bucket' => env('AWS_THUMBNAILS_BUCKET', 'bitdrama-thumbnails-dev-643067044976'),
+    ],
+
+    'google_play' => [
+        'package_name' => env('GOOGLE_PLAY_PACKAGE_NAME', 'com.hkasolution.bitdrama'),
+        'service_account_json' => env('GOOGLE_PLAY_SERVICE_ACCOUNT_JSON'),
+    ],
 
 ];

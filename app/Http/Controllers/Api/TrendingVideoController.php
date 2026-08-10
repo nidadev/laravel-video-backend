@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\TrendingVideo;
+use App\Services\MediaUrlService;
 
 class TrendingVideoController extends Controller
 {
@@ -20,6 +21,13 @@ class TrendingVideoController extends Controller
             'video_url',
             'created_at'
         ]);
+
+        $videos->transform(function ($video) {
+            $video->thumbnail = MediaUrlService::cdnUrl($video->thumbnail);
+            $video->video_url = MediaUrlService::cdnUrl($video->video_url);
+
+            return $video;
+        });
 
         // Generate 2-hour temporary URLs for each video and thumbnail
         /*$videos->transform(function ($video) {

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Bookmark;
 use App\Models\Video;
+use App\Services\MediaUrlService;
 class BookmarkController extends Controller
 {
     //
@@ -70,7 +71,7 @@ class BookmarkController extends Controller
                     'year_of_published' => $item->video->year_of_published, 
                     'title' => $item->video->title,
                     'description' => $item->video->description,
-                    'thumbnail' => $item->video->thumbnail,
+                    'thumbnail' => MediaUrlService::cdnUrl($item->video->thumbnail),
                     'category_id' => $item->video->category_id,
                     'subcategory_id' => $item->video->subcategory_id,
                     'season_id' => $item->video->season_id,

@@ -11,6 +11,7 @@ use Aws\S3\S3Client;
 use App\Models\Season;
 use App\Models\VideoFile;
 use App\Services\MediaConvertService;
+use App\Services\MediaUrlService;
 
 
 class VideoController extends Controller
@@ -158,7 +159,10 @@ public function generatePresignedUrl(Request $request)
 
     try {
         $s3 = Storage::disk('s3')->getClient();
-        $bucket = config('filesystems.disks.s3.bucket');
+        $bucket = match ($request->type) {
+            'thumbnail', 'video_image' => config('services.media.thumbnail_bucket'),
+            default => config('services.media.raw_bucket'),
+        };
 
         // Determine folder based on upload type
         $folder = match ($request->type) {
@@ -182,7 +186,7 @@ public function generatePresignedUrl(Request $request)
         return response()->json([
             'success' => true,
             'url' => $presignedUrl,
-            'file_url' => Storage::disk('s3')->url($key),
+            'file_url' => $this->s3ObjectUrl($bucket, $key),
         ]);
     } catch (\Exception $e) {
         \Log::error('Presigned URL generation failed', [
@@ -329,25 +333,22 @@ foreach ($removedFiles as $removedFile) {
 
                 }
 
-
-                $outputS3Folder = "s3://{$bucket}/hls/{$existingFile->id}/";
-
+                $processedBucket = config('services.media.processed_bucket');
+                $outputS3Folder = "s3://{$processedBucket}/hls/{$existingFile->id}/";
                 $originalName = pathinfo($fileUrl, PATHINFO_FILENAME);
 
+                $jobId = $mcService->createHlsJob($inputS3Url, $outputS3Folder, $originalName);
 
-                $mcService->createHlsJob(
-                    $inputS3Url,
-                    $outputS3Folder,
-                    $originalName
-                );
-
-
-                $hlsUrl = "https://{$bucket}.s3.us-east-1.amazonaws.com/hls/{$existingFile->id}/{$originalName}.m3u8";
+                $hlsPath = "hls/{$existingFile->id}/{$originalName}.m3u8";
+                $hlsUrl = MediaUrlService::cdnUrl($hlsPath);
 
 
                 $existingFile->update([
                     'file_url' => $hlsUrl,
                     'manifest_url' => $outputS3Folder . "{$originalName}.m3u8",
+                    'job_id' => $jobId,
+                    'job_status' => 'SUBMITTED',
+                    'job_error' => null,
                     'variant' => $fileData['variant'] ?? $existingFile->variant,
                     'season_id' => $fileData['season'] ?? $existingFile->season_id,
                     'image' => $video->thumbnail,
@@ -660,7 +661,8 @@ public function storePresigned(Request $request)
             ]);
 
             // output folder per video_file ID
-            $outputS3Folder = "s3://{$bucket}/hls/{$videoFile->id}/";
+            $processedBucket = config('services.media.processed_bucket');
+            $outputS3Folder = "s3://{$processedBucket}/hls/{$videoFile->id}/";
 
             // use original filename with spaces as NameModifier
             $originalName = pathinfo($file['file_url'], PATHINFO_FILENAME);
@@ -668,11 +670,15 @@ public function storePresigned(Request $request)
             $jobId = $mcService->createHlsJob($inputS3Url, $outputS3Folder, $originalName);
 
             // HLS URL — DO NOT encode spaces
-            $hlsUrl = "https://{$bucket}.s3.us-east-1.amazonaws.com/hls/{$videoFile->id}/{$originalName}.m3u8";
+            $hlsPath = "hls/{$videoFile->id}/{$originalName}.m3u8";
+            $hlsUrl = MediaUrlService::cdnUrl($hlsPath);
 
             $videoFile->update([
                 'file_url' => $hlsUrl,
-                'manifest_url' => $outputS3Folder . "{$originalName}.m3u8"
+                'manifest_url' => $outputS3Folder . "{$originalName}.m3u8",
+                'job_id' => $jobId,
+                'job_status' => 'SUBMITTED',
+                'job_error' => null,
             ]);
         }
 
@@ -741,6 +747,13 @@ private function deleteS3Folder($url)
     if (!empty($files)) {
         \Storage::disk('s3')->delete($files);
     }
+}
+
+private function s3ObjectUrl(string $bucket, string $key): string
+{
+    $region = config('filesystems.disks.s3.region', env('AWS_DEFAULT_REGION', 'us-east-1'));
+
+    return "https://{$bucket}.s3.{$region}.amazonaws.com/" . ltrim($key, '/');
 }
 
 }

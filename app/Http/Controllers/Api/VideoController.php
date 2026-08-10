@@ -17,6 +17,8 @@ use App\Models\WatchHistory;
 use Carbon\Carbon;
 use App\Models\User;
 use App\Models\Subscription;
+use App\Services\GooglePlayPurchaseVerifier;
+use App\Services\MediaUrlService;
 
 
 
@@ -36,6 +38,7 @@ class VideoController extends Controller
 
         // ✅ Use pagination instead of get()
         $videos = $query->orderBy('id', 'asc')->paginate(30);
+        $videos->getCollection()->transform(fn ($video) => $this->formatVideo($video, true));
 
         return response()->json([
             'message' => 'Videos fetched successfully',
@@ -339,7 +342,7 @@ $episodes = $episodes
                 'id' => $video->id,
                 'title' => $video->title,
                 'description' => $video->description,
-                'thumbnail' => $video->thumbnail,
+                'thumbnail' => MediaUrlService::cdnUrl($video->thumbnail),
                 'year_of_published' => $video->year_of_published,
                 'is_bookmarked' => $isBookmarked, // 🔥 ADDED
             ],
@@ -350,8 +353,8 @@ $episodes = $episodes
                     'episode_id' => $file->id,
                     'title' => $file->variant,
                     'season_id' => $file->season_id,
-                    'url' => $file->file_url,
-                    'thumbnail' => $file->image,
+                    'url' => MediaUrlService::cdnUrl($file->file_url),
+                    'thumbnail' => MediaUrlService::cdnUrl($file->image),
                 ];
             }),
         ];
@@ -412,7 +415,7 @@ public function fetchByCategory(Request $request)
                 'id' => $video->id,
                 'title' => $video->title,
                 'description' => $video->description,
-                'thumbnail' => $video->thumbnail_url ?? null,
+                'thumbnail' => MediaUrlService::cdnUrl($video->thumbnail_url ?? $video->thumbnail),
                 'category' => $video->category ? [
                     'id' => $video->category->id,
                     'name' => $video->category->name,
@@ -425,7 +428,7 @@ public function fetchByCategory(Request $request)
                     return [
                         'id' => $file->id,
                         'variant' => $file->variant,
-                        'url' => $file->file_url,
+                        'url' => MediaUrlService::cdnUrl($file->file_url),
                     ];
                 }),
             ];
@@ -526,14 +529,14 @@ public function trendingAndMostWatched(Request $request)
         $formatVideo = fn($v) => [
             'id' => $v->id,
             'title' => $v->title,
-            'thumbnail' => $v->thumbnail,
+            'thumbnail' => MediaUrlService::cdnUrl($v->thumbnail),
             'category' => optional($v->category)->only('id', 'name'),
             'subcategory' => optional($v->subcategory)->only('id', 'name'),
             'views_count' => $v->views_count ?? 0,
             'files' => $v->files->map(fn($f) => [
                 'id' => $f->id,
                 'variant' => $f->variant,
-                'url' => $f->file_url,
+                'url' => MediaUrlService::cdnUrl($f->file_url),
             ]),
         ];
 
@@ -608,7 +611,7 @@ public function seeall(Request $request)
                 'id' => $video->id,
                 'title' => $video->title,
                 'description' => $video->description,
-                'thumbnail' => $video->thumbnail,
+                'thumbnail' => MediaUrlService::cdnUrl($video->thumbnail),
                 'year_of_published' => $video->year_of_published,
                 'views' => $video->views_count,
                 'category' => $video->category->name ?? null,
@@ -678,7 +681,7 @@ public function dashboard(Request $request)
             'year_of_published',
             'category_id',
             'subcategory_id'
-        ]);
+        ])->map(fn ($video) => $this->formatVideo($video));
 
 
     /* =====================================================
@@ -704,7 +707,7 @@ public function dashboard(Request $request)
         'year_of_published',
         'category_id',
         'subcategory_id'
-    ]);
+    ])->map(fn ($video) => $this->formatVideo($video));
 
 
     /* =====================================================
@@ -730,7 +733,7 @@ public function dashboard(Request $request)
         'year_of_published',
         'category_id',
         'subcategory_id'
-    ]);
+    ])->map(fn ($video) => $this->formatVideo($video));
 
 
     /* =====================================================
@@ -801,7 +804,7 @@ public function search(Request $request)
             'created_by' => $video->created_by,
             'status' => $video->status,
             'duration' => $video->duration,
-            'thumbnail' => $video->thumbnail,
+            'thumbnail' => MediaUrlService::cdnUrl($video->thumbnail),
             'created_at' => $video->created_at,
             'updated_at' => $video->updated_at,
             'category_id' => $video->category_id,
@@ -932,16 +935,25 @@ public function googlePayPurchase(Request $request)
         'plan_id' => 'required|exists:plans,id',
         'purchase_date' => 'required|date',
         'purchase_token' => 'required|string|unique:google_pay_purchases,googlepay_transaction_id',
-        'payment_method' => 'required|string'
+        'payment_method' => 'required|string',
+        'product_id' => 'required|string',
+        'package_name' => 'nullable|string',
     ]);
 
     try {
         $user = User::findOrFail($request->user_id);
         $plan = Plan::findOrFail($request->plan_id);
+        $verification = app(GooglePlayPurchaseVerifier::class)->verifySubscription(
+            $request->purchase_token,
+            $request->product_id,
+            $request->package_name
+        );
 
         // ✅ Fix start and end date calculation
         $startDate = Carbon::parse($request->purchase_date)->startOfDay();
-        $endDate = $startDate->copy()->addDays($plan->duration_days - 1)->endOfDay();
+        $endDate = !empty($verification['expiry_time_millis'])
+            ? Carbon::createFromTimestampMs($verification['expiry_time_millis'])
+            : $startDate->copy()->addDays($plan->duration_days - 1)->endOfDay();
 
         // 1️⃣ Store Google Pay Payment
         $payment = GooglePayPurchase::create([
@@ -952,7 +964,9 @@ public function googlePayPurchase(Request $request)
             'payment_response' => [
                 'payment_method' => $request->payment_method,
                 'purchase_token' => $request->purchase_token,
-                'purchase_date' => $startDate->toDateTimeString()
+                'purchase_date' => $startDate->toDateTimeString(),
+                'product_id' => $request->product_id,
+                'google_play_verification' => $verification,
             ],
             'status' => 'completed'
         ]);
@@ -994,10 +1008,8 @@ public function googlePayPurchase(Request $request)
         \Log::error('GooglePay Error: ' . $e->getMessage());
 
         return response()->json([
-            'message' => 'Google Pay purchase failed',
-            'data' => [
-                'error' => $e->getMessage()
-            ],
+            'message' => 'Google Play purchase could not be verified',
+            'data' => [],
             'response' => 500,
             'success' => false,
         ], 500);
@@ -1024,13 +1036,13 @@ public function watchHistory(Request $request)
             'episode_id' => $item->videoFile->id,
             'video_id' => $item->videoFile->video_id,
             'variant' => $item->videoFile->variant,
-            'episode_url' => $item->videoFile->file_url,
+            'episode_url' => MediaUrlService::cdnUrl($item->videoFile->file_url),
             'season_id' => $item->videoFile->season_id,
 
             // 🎬 Video info
             'video_title' => $video->title,
             'video_description' => $video->description,
-            'video_thumbnail' => $video->thumbnail,
+            'video_thumbnail' => MediaUrlService::cdnUrl($video->thumbnail),
 
             // ✅ FIX: duration from videos table
             'duration' => $video->duration,
@@ -1083,7 +1095,7 @@ public function storeWatchHistory(Request $request)
             'watched_seconds' => $request->watched_seconds ?? 0,
             'episode_title' => $episode->variant ?? 'Episode',
             'episode_release_date' => $releaseDate,
-            'episode_url' => $episode->file_url,
+            'episode_url' => MediaUrlService::cdnUrl($episode->file_url),
             'episode_duration' => $episode->duration,
         ]
     );
@@ -1095,7 +1107,7 @@ public function storeWatchHistory(Request $request)
             'episode_id' => $episode->id,
             'episode_title' => $watchHistory->episode_title,
             'episode_release_date' => $watchHistory->episode_release_date,
-            'episode_url' => $episode->file_url,
+            'episode_url' => MediaUrlService::cdnUrl($episode->file_url),
             'episode_duration' => $episode->duration,
             'watched_seconds' => $watchHistory->watched_seconds,
         ],
@@ -1114,14 +1126,41 @@ public function clearWatchHistory(Request $request)
     ]);
 }
 
+private function formatVideo(Video $video, bool $includeFiles = false): array
+{
+    $data = [
+        'id' => $video->id,
+        'title' => $video->title,
+        'description' => $video->description,
+        'thumbnail' => MediaUrlService::cdnUrl($video->thumbnail),
+        'year_of_published' => $video->year_of_published,
+        'created_by' => $video->created_by,
+        'status' => $video->status,
+        'duration' => $video->duration,
+        'created_at' => $video->created_at,
+        'updated_at' => $video->updated_at,
+        'category_id' => $video->category_id,
+        'subcategory_id' => $video->subcategory_id,
+        'season_id' => $video->season_id,
+        'is_trending' => $video->is_trending,
+    ];
 
+    if (isset($video->views_count)) {
+        $data['views_count'] = $video->views_count;
+    }
 
+    if ($includeFiles && $video->relationLoaded('files')) {
+        $data['files'] = $video->files->map(fn ($file) => [
+            'id' => $file->id,
+            'variant' => $file->variant,
+            'url' => MediaUrlService::cdnUrl($file->file_url),
+            'thumbnail' => MediaUrlService::cdnUrl($file->image),
+            'season_id' => $file->season_id,
+            'duration' => $file->duration,
+        ])->values();
+    }
 
-
-
-
-
-
-
+    return $data;
+}
 
 }

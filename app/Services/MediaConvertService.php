@@ -84,4 +84,11 @@ class MediaConvertService
 
         return $job['Job']['Id'];
     }
+
+    public function getJob(string $jobId): array
+    {
+        return $this->client->getJob([
+            'Id' => $jobId,
+        ])->toArray();
+    }
 }
