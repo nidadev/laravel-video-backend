@@ -128,6 +128,12 @@ function updateUploadState(start = false) {
         $('#submitBtn').prop('disabled', false).text('Upload All');
     }
 }
+
+function resetUploadState() {
+    isUploading = false;
+    $('#submitBtn').prop('disabled', false).text('Upload All');
+}
+
 $(document).ready(function() {
   // Load subcategories dynamically
   $('#category-select').on('change', function() {
@@ -166,6 +172,7 @@ if (isUploading) {
     return;
 }
 
+try {
 
   const title = $('[name="title"]').val();
   const description = $('[name="description"]').val();
@@ -204,14 +211,18 @@ updateUploadState(true);
   let thumbnailUrl = null;
   if(thumbnail){
     $('#thumbProgressWrapper').removeClass('d-none');
-    const presignThumbData = await (await fetch(`{{ route('admin.videos.presigned.url') }}`,{
+    const presignThumbRes = await fetch(`{{ route('admin.videos.presigned.url') }}`,{
       method:'POST',
       headers:{
         'X-CSRF-TOKEN': $('input[name="_token"]').val(),
         'Content-Type':'application/json'
       },
       body: JSON.stringify({filename: thumbnail.name, content_type: thumbnail.type, type:'thumbnail'})
-    })).json();
+    });
+    const presignThumbData = await presignThumbRes.json();
+    if (!presignThumbRes.ok || !presignThumbData.success) {
+      throw new Error(presignThumbData.details || presignThumbData.error || 'Failed to create thumbnail upload URL');
+    }
     await uploadFileToS3(thumbnail, presignThumbData.url, $('#thumbProgress')[0]);
     thumbnailUrl = presignThumbData.file_url;
   }
@@ -234,11 +245,15 @@ const file = videoInput.files[0];
 
 
     // Video upload
-    const presignVideoData = await (await fetch(`{{ route('admin.videos.presigned.url') }}`,{
+    const presignVideoRes = await fetch(`{{ route('admin.videos.presigned.url') }}`,{
       method:'POST',
       headers:{'X-CSRF-TOKEN': $('input[name="_token"]').val(),'Content-Type':'application/json'},
       body: JSON.stringify({filename:file.name, content_type:file.type, type:'video'})
-    })).json();
+    });
+    const presignVideoData = await presignVideoRes.json();
+    if (!presignVideoRes.ok || !presignVideoData.success) {
+      throw new Error(presignVideoData.details || presignVideoData.error || 'Failed to create video upload URL');
+    }
 
     const progressBar = $('<div class="progress mb-2"><div class="progress-bar progress-bar-striped progress-bar-animated" style="width:0%">Uploading '+file.name+'</div></div>');
     progressContainer.append(progressBar);
@@ -264,7 +279,10 @@ const file = videoInput.files[0];
     body: JSON.stringify({title, description,season_id,year_of_published, category_id, subcategory_id, thumbnail:thumbnailUrl, videos:uploadedVideos})
   });
 
-  const result = await storeRes.json();
+  const result = await storeRes.json().catch(() => ({
+    success: false,
+    error: 'Upload metadata save failed. Server returned an invalid response.'
+  }));
   
 if (result.success) {
     // Save the message before redirecting
@@ -272,7 +290,11 @@ if (result.success) {
 
     window.location.href = result.redirect;
 } else {
-    alert(result.message || result.error);
+    throw new Error(result.details || result.message || result.error || 'Upload failed');
+}
+} catch (error) {
+  alert(error.message || error);
+  resetUploadState();
 }
 });
 
@@ -312,10 +334,10 @@ async function uploadFileToS3(file, url, progressBar){
         completedUploads++;
         updateUploadState();
         resolve();
-      } else reject(xhr.responseText);
+      } else reject(new Error(xhr.responseText || `S3 upload failed with HTTP ${xhr.status}`));
     };
 
-    xhr.onerror = ()=>reject('Upload failed');
+    xhr.onerror = ()=>reject(new Error('Upload failed. Please check your connection and S3/CORS configuration.'));
     xhr.send(file);
   });
 }

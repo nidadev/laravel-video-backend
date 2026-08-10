@@ -519,8 +519,8 @@ public function storePresigned(Request $request)
             MediaConvert HLS
             */
 
-            $outputS3Folder =
-                "s3://{$bucket}/hls/{$videoFile->id}/";
+            $processedBucket = config('services.media.processed_bucket');
+            $outputS3Folder = "s3://{$processedBucket}/hls/{$videoFile->id}/";
 
 
 
@@ -529,16 +529,14 @@ public function storePresigned(Request $request)
 
 
 
-            $mcService->createHlsJob(
+            $jobId = $mcService->createHlsJob(
                 $inputS3Url,
                 $outputS3Folder,
                 $originalName
             );
 
-
-
-            $hlsUrl =
-            "https://{$bucket}.s3.us-east-1.amazonaws.com/hls/{$videoFile->id}/{$originalName}.m3u8";
+            $hlsPath = "hls/{$videoFile->id}/{$originalName}.m3u8";
+            $hlsUrl = MediaUrlService::cdnUrl($hlsPath);
 
 
 
@@ -548,6 +546,9 @@ public function storePresigned(Request $request)
 
                 'manifest_url' =>
                     $outputS3Folder . "{$originalName}.m3u8",
+                'job_id' => $jobId,
+                'job_status' => 'SUBMITTED',
+                'job_error' => null,
 
             ]);
 
@@ -569,17 +570,6 @@ public function storePresigned(Request $request)
 
     } catch (\Exception $e) {
 
-        \Log::error('Presigned store failed', [
-            'message' => $e->getMessage(),
-            'file' => $e->getFile(),
-            'line' => $e->getLine(),
-            'trace' => $e->getTraceAsString(),
-        ]);
-
-    
-
-    } catch (\Exception $e) {
-
 
         \Log::error('Presigned store failed', [
     'message' => $e->getMessage(),
@@ -593,7 +583,8 @@ public function storePresigned(Request $request)
 
             'success' => false,
 
-            'error' => $e->getMessage(),
+            'error' => 'Video upload failed. Please check server logs for details.',
+            'details' => $e->getMessage(),
 
         ],500);
 
