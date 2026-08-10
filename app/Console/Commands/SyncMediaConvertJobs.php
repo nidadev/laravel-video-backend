@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\VideoFile;
 use App\Services\MediaConvertService;
+use App\Services\MediaUrlService;
 use Illuminate\Console\Command;
 
 class SyncMediaConvertJobs extends Command
@@ -29,6 +30,12 @@ class SyncMediaConvertJobs extends Command
                     'job_status' => $status,
                     'job_error' => $errorMessage,
                 ]);
+
+                if ($status === 'COMPLETE' && $file->manifest_url) {
+                    $file->update([
+                        'file_url' => MediaUrlService::cdnUrl($file->manifest_url),
+                    ]);
+                }
 
                 if ($file->video) {
                     $hasPendingJobs = $file->video->files()
