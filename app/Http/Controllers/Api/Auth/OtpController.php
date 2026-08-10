@@ -91,7 +91,13 @@ class OtpController extends Controller
 
 public function sendOtp(Request $request)
 {
-    $validator = Validator::make($request->all(), [
+    $input = $request->all();
+
+    if (($input['phone'] ?? null) === '1234567890') {
+        $input['phone'] = '+11234567890';
+    }
+
+    $validator = Validator::make($input, [
         'email' => [
             'nullable',
             'email',
@@ -114,8 +120,8 @@ public function sendOtp(Request $request)
         );
     }
 
-    $email = $request->input('email');
-    $phone = $request->input('phone');
+    $email = $input['email'] ?? null;
+    $phone = $input['phone'] ?? null;
 
     /*
     |--------------------------------------------------------------------------
@@ -128,10 +134,6 @@ public function sendOtp(Request $request)
     | But store/use the demo phone internally as E.164.
     |--------------------------------------------------------------------------
     */
-
-    if ($phone === '1234567890') {
-        $phone = '+11234567890';
-    }
 
     /*
     |--------------------------------------------------------------------------
@@ -272,17 +274,19 @@ public function sendOtp(Request $request)
             ]
         );
 
-    } catch (\Exception $e) {
+    } catch (\Throwable $e) {
 
         \Log::error(
-            'OTP sending failed: ' . $e->getMessage()
+            'OTP sending failed',
+            [
+                'phone' => $phone,
+                'error' => $e->getMessage(),
+            ]
         );
 
         return $this->responseJson(
-            'Failed to send OTP.',
-            [
-                'error' => $e->getMessage(),
-            ],
+            'Failed to send OTP. Please try again later.',
+            [],
             500,
             false
         );
@@ -292,11 +296,27 @@ public function sendOtp(Request $request)
 
 private function sendSmsOtp(string $phone, int $otp): void
 {
-    $client = new Client(env('TWILIO_SID'), env('TWILIO_AUTH_TOKEN'));
-    $client->messages->create($phone, [
-        'from' => env('TWILIO_FROM'),
+    $sid = env('TWILIO_SID');
+    $token = env('TWILIO_AUTH_TOKEN');
+    $from = env('TWILIO_FROM') ?: env('TWILIO_PHONE_NUMBER');
+    $messagingServiceSid = env('TWILIO_MESSAGING_SERVICE_SID');
+
+    if (!$sid || !$token || (!$from && !$messagingServiceSid)) {
+        throw new \RuntimeException('Twilio SMS configuration is incomplete.');
+    }
+
+    $params = [
         'body' => 'Your BytDrama verification code is ' . $otp,
-    ]);
+    ];
+
+    if ($messagingServiceSid) {
+        $params['messagingServiceSid'] = $messagingServiceSid;
+    } else {
+        $params['from'] = $from;
+    }
+
+    $client = new Client($sid, $token);
+    $client->messages->create($phone, $params);
 }
 private function responseJson(string $message, array $data, int $status = 200, bool $success = true)
 {
