@@ -10,12 +10,12 @@ class AppleAppStorePurchaseVerifier
 {
     public function verifySubscription(array $payload): array
     {
-        if (!empty($payload['purchase_token'])) {
-            return $this->verifyReceipt($payload);
-        }
-
         if (!empty($payload['transaction_id'])) {
             return $this->verifyTransaction($payload);
+        }
+
+        if (!empty($payload['purchase_token'])) {
+            return $this->verifyReceipt($payload);
         }
 
         throw new RuntimeException('Apple purchase token or transaction id is required.');
