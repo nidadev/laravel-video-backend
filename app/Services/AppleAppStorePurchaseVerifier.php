@@ -10,12 +10,16 @@ class AppleAppStorePurchaseVerifier
 {
     public function verifySubscription(array $payload): array
     {
-        if (!empty($payload['transaction_id'])) {
+        if (!empty($payload['transaction_id']) && $this->hasServerApiCredentials()) {
             return $this->verifyTransaction($payload);
         }
 
         if (!empty($payload['purchase_token'])) {
             return $this->verifyReceipt($payload);
+        }
+
+        if (!empty($payload['transaction_id'])) {
+            return $this->verifyTransaction($payload);
         }
 
         throw new RuntimeException('Apple purchase token or transaction id is required.');
@@ -181,6 +185,16 @@ class AppleAppStorePurchaseVerifier
             'aud' => 'appstoreconnect-v1',
             'bid' => $bundleId,
         ], $privateKey, 'ES256', $keyId);
+    }
+
+    private function hasServerApiCredentials(): bool
+    {
+        return (bool) (
+            config('services.apple.issuer_id')
+            && config('services.apple.key_id')
+            && config('services.apple.bundle_id')
+            && $this->privateKey()
+        );
     }
 
     private function privateKey(): ?string
