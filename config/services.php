@@ -67,4 +67,13 @@ return [
         'service_account_json' => env('GOOGLE_PLAY_SERVICE_ACCOUNT_JSON'),
     ],
 
+    'apple' => [
+        'bundle_id' => env('APPLE_BUNDLE_ID'),
+        'shared_secret' => env('APPLE_APP_SHARED_SECRET', env('APPLE_SHARED_SECRET')),
+        'issuer_id' => env('APPLE_ISSUER_ID'),
+        'key_id' => env('APPLE_KEY_ID'),
+        'private_key_path' => env('APPLE_PRIVATE_KEY_PATH'),
+        'private_key' => env('APPLE_PRIVATE_KEY'),
+    ],
+
 ];

@@ -42,6 +42,7 @@ Route::middleware(['jwt.auth'])->group(function () {
 
 
 Route::post('/google-pay-purchase', [VideoController::class, 'googlePayPurchase']);
+Route::post('/apple-pay-purchase', [VideoController::class, 'applePayPurchase']);
 
    Route::post('/bookmarks/toggle', [\App\Http\Controllers\Api\BookmarkController::class, 'toggle']);
     Route::get('/bookmarks', [\App\Http\Controllers\Api\BookmarkController::class, 'index']);
@@ -108,7 +109,6 @@ Route::post('/payment/webhook', [PaymentWebhookController::class, 'handleWebhook
     Route::get('{id}',[])
 
 });*/
-
 
 
 

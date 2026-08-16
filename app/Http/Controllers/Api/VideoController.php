@@ -12,11 +12,13 @@ use App\Models\Category;
 use App\Models\Season;
 use App\Models\Plan;
 use App\Models\GooglePayPurchase;
+use App\Models\ApplePayPurchase;
 use App\Models\Bookmark;
 use App\Models\WatchHistory;
 use Carbon\Carbon;
 use App\Models\User;
 use App\Models\Subscription;
+use App\Services\AppleAppStorePurchaseVerifier;
 use App\Services\GooglePlayPurchaseVerifier;
 use App\Services\MediaUrlService;
 
@@ -1013,6 +1015,117 @@ public function googlePayPurchase(Request $request)
 
         return response()->json([
             'message' => 'Google Play purchase could not be verified',
+            'data' => [],
+            'response' => 500,
+            'success' => false,
+        ], 500);
+    }
+}
+
+public function applePayPurchase(Request $request)
+{
+    $request->validate([
+        'user_id' => 'required|exists:users,id',
+        'plan_id' => 'required|exists:plans,id',
+        'purchase_date' => 'nullable|date',
+        'purchase_token' => 'nullable|string',
+        'transaction_id' => 'nullable|string',
+        'original_transaction_id' => 'nullable|string',
+        'payment_method' => 'nullable|string',
+        'product_id' => 'required|string',
+        'bundle_id' => 'nullable|string',
+        'environment' => 'nullable|in:Production,Sandbox,production,sandbox',
+    ]);
+
+    if (!$request->filled('purchase_token') && !$request->filled('transaction_id')) {
+        return response()->json([
+            'message' => 'Apple purchase token or transaction id is required',
+            'data' => [],
+            'response' => 422,
+            'success' => false,
+        ], 422);
+    }
+
+    try {
+        $user = User::findOrFail($request->user_id);
+        $plan = Plan::findOrFail($request->plan_id);
+        $verification = app(AppleAppStorePurchaseVerifier::class)->verifySubscription($request->all());
+
+        if (!empty($verification['product_id']) && $verification['product_id'] !== $request->product_id) {
+            return response()->json([
+                'message' => 'Apple product id does not match requested product id',
+                'data' => [],
+                'response' => 422,
+                'success' => false,
+            ], 422);
+        }
+
+        $startDate = $request->filled('purchase_date')
+            ? Carbon::parse($request->purchase_date)->startOfDay()
+            : now();
+
+        $endDate = !empty($verification['expiry_time_millis'])
+            ? Carbon::createFromTimestampMs($verification['expiry_time_millis'])
+            : $startDate->copy()->addDays($plan->duration_days - 1)->endOfDay();
+
+        $transactionId = $verification['transaction_id']
+            ?? $request->transaction_id
+            ?? $request->purchase_token;
+
+        $payment = ApplePayPurchase::updateOrCreate(
+            [
+                'apple_transaction_id' => $transactionId,
+                'product_id' => $request->product_id,
+            ],
+            [
+                'user_id' => $user->id,
+                'plan_id' => $plan->id,
+                'apple_original_transaction_id' => $verification['original_transaction_id'] ?? $request->original_transaction_id,
+                'payment_response' => [
+                    'payment_method' => $request->payment_method ?: 'Apple Pay',
+                    'purchase_date' => $startDate->toDateTimeString(),
+                    'product_id' => $request->product_id,
+                    'bundle_id' => $request->bundle_id,
+                    'environment' => $request->environment,
+                    'apple_verification' => $verification,
+                ],
+                'status' => 'completed',
+            ]
+        );
+
+        Subscription::where('user_id', $user->id)
+            ->where('status', 'expired')
+            ->delete();
+
+        Subscription::where('user_id', $user->id)
+            ->where('status', 'active')
+            ->update(['status' => 'expired']);
+
+        $subscription = Subscription::create([
+            'user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'status' => 'active',
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+        ]);
+
+        $subscription->load('plan');
+
+        return response()->json([
+            'message' => 'Apple subscription created successfully',
+            'data' => [
+                'subscription' => $subscription,
+                'plan' => $subscription->plan,
+                'payment' => $payment,
+            ],
+            'response' => 200,
+            'success' => true,
+        ], 200);
+    } catch (\Exception $e) {
+        \Log::error('Apple Pay Error: ' . $e->getMessage());
+
+        return response()->json([
+            'message' => 'Apple purchase could not be verified',
             'data' => [],
             'response' => 500,
             'success' => false,
