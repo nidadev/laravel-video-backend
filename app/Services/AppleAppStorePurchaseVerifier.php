@@ -10,6 +10,10 @@ class AppleAppStorePurchaseVerifier
 {
     public function verifySubscription(array $payload): array
     {
+        if (!empty($payload['purchase_token']) && $this->isJws($payload['purchase_token'])) {
+            return $this->verifySignedTransactionPayload($payload);
+        }
+
         if (!empty($payload['transaction_id']) && $this->hasServerApiCredentials()) {
             return $this->verifyTransaction($payload);
         }
@@ -23,6 +27,47 @@ class AppleAppStorePurchaseVerifier
         }
 
         throw new RuntimeException('Apple purchase token or transaction id is required.');
+    }
+
+    private function verifySignedTransactionPayload(array $payload): array
+    {
+        $transaction = $this->decodeSignedPayload($payload['purchase_token']);
+
+        if (!$transaction) {
+            throw new RuntimeException('Apple signed transaction payload is invalid.');
+        }
+
+        if (($transaction['bundleId'] ?? null) && config('services.apple.bundle_id') && $transaction['bundleId'] !== config('services.apple.bundle_id')) {
+            throw new RuntimeException('Apple transaction bundle id does not match.');
+        }
+
+        if (($transaction['productId'] ?? null) && !empty($payload['product_id']) && $transaction['productId'] !== $payload['product_id']) {
+            throw new RuntimeException('Apple transaction product id does not match.');
+        }
+
+        $transactionId = $transaction['transactionId'] ?? $payload['transaction_id'] ?? null;
+
+        if ($transactionId && $this->hasServerApiCredentials()) {
+            return $this->verifyTransaction(array_merge($payload, [
+                'transaction_id' => $transactionId,
+            ]));
+        }
+
+        $expiryTimeMillis = isset($transaction['expiresDate']) ? (int) $transaction['expiresDate'] : null;
+
+        if ($expiryTimeMillis && $expiryTimeMillis < now()->getTimestampMs()) {
+            throw new RuntimeException('Apple subscription is expired.');
+        }
+
+        return [
+            'source' => 'signed_transaction_payload',
+            'environment' => $transaction['environment'] ?? ($payload['environment'] ?? null),
+            'product_id' => $transaction['productId'] ?? $payload['product_id'] ?? null,
+            'transaction_id' => $transactionId,
+            'original_transaction_id' => $transaction['originalTransactionId'] ?? $payload['original_transaction_id'] ?? null,
+            'expiry_time_millis' => $expiryTimeMillis,
+            'transaction' => $transaction,
+        ];
     }
 
     private function verifyReceipt(array $payload): array
@@ -219,5 +264,10 @@ class AppleAppStorePurchaseVerifier
         $payload .= str_repeat('=', (4 - strlen($payload) % 4) % 4);
 
         return json_decode(base64_decode($payload), true) ?: [];
+    }
+
+    private function isJws(string $value): bool
+    {
+        return substr_count($value, '.') === 2;
     }
 }

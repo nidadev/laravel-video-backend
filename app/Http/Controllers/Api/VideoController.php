@@ -1082,7 +1082,7 @@ public function applePayPurchase(Request $request)
                 'plan_id' => $plan->id,
                 'apple_original_transaction_id' => $verification['original_transaction_id'] ?? $request->original_transaction_id,
                 'payment_response' => [
-                    'payment_method' => $request->payment_method ?: 'Apple Pay',
+                    'payment_method' => $request->payment_method ?: 'Apple In-App Purchase',
                     'purchase_date' => $startDate->toDateTimeString(),
                     'product_id' => $request->product_id,
                     'bundle_id' => $request->bundle_id,
