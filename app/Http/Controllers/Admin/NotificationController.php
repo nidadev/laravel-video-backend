@@ -21,6 +21,7 @@ class NotificationController extends Controller
         $request->validate([
             'title' => 'required|string|max:255',
             'message' => 'required|string',
+            'image_url' => 'nullable|url|max:2048',
         ]);
 
         $projectId = env('FIREBASE_PROJECT_ID');
@@ -39,6 +40,7 @@ class NotificationController extends Controller
                 'user_id' => $user->id,
                 'title' => $request->title,
                 'message' => $request->message,
+                'image_url' => $request->image_url,
             ]);
 
             $payload = [
@@ -51,9 +53,29 @@ class NotificationController extends Controller
                     'data' => [
                         'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
                         'user_id' => (string) $user->id,
+                        'image_url' => (string) $request->image_url,
                     ],
                 ],
             ];
+
+            if ($request->filled('image_url')) {
+                $payload['message']['notification']['image'] = $request->image_url;
+                $payload['message']['android'] = [
+                    'notification' => [
+                        'image' => $request->image_url,
+                    ],
+                ];
+                $payload['message']['apns'] = [
+                    'payload' => [
+                        'aps' => [
+                            'mutable-content' => 1,
+                        ],
+                    ],
+                    'fcm_options' => [
+                        'image' => $request->image_url,
+                    ],
+                ];
+            }
 
             Http::withToken($accessToken)
                 ->post($url, $payload);

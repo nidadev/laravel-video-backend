@@ -659,7 +659,7 @@ public function dashboard(Request $request)
     $subcategoryId = $request->subcategory_id;
 
     /* =====================================================
-       1. BANNER VIDEOS (3 RANDOM) — AS ARRAY OBJECTS
+       1. BANNER VIDEOS (LATEST UPLOADS) - AS ARRAY OBJECTS
     ===================================================== */
     $bannerQuery = Video::query();
 
@@ -672,8 +672,8 @@ public function dashboard(Request $request)
     }
 
     $bannerVideos = $bannerQuery
-        ->inRandomOrder()
-        ->take(3)
+        ->orderBy('created_at', 'desc')
+        ->take(5)
         ->get([
             'id',
             'title',

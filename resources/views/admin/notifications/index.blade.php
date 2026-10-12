@@ -24,6 +24,12 @@
             <textarea class="form-control" name="message" rows="3" required placeholder="Enter message"></textarea>
         </div>
 
+        <div class="mb-3">
+            <label for="image_url" class="form-label">Notification Image URL</label>
+            <input type="url" class="form-control" name="image_url" placeholder="https://www.bitdrama.io/path/to/image.jpg">
+            <small class="text-muted">Optional. Use a public HTTPS image URL for rich push notifications.</small>
+        </div>
+
         <button type="submit" class="btn btn-primary">Send Notification</button>
     </form>
 </div>

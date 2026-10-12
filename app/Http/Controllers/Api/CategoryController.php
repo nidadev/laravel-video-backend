@@ -13,10 +13,18 @@ class CategoryController extends Controller
      */
    public function index()
     {
-        //$categories = Category::all();
-        $categories = Category::orderByRaw("CASE WHEN LOWER(name) = 'english' THEN 1 ELSE 0 END")
-    ->orderBy('id')
-    ->get();
+        $categories = Category::orderByRaw("
+                CASE LOWER(name)
+                    WHEN 'urdu' THEN 1
+                    WHEN 'punjabi' THEN 2
+                    WHEN 'pashto' THEN 3
+                    WHEN 'english' THEN 4
+                    WHEN 'originals' THEN 5
+                    ELSE 6
+                END
+            ")
+            ->orderBy('id')
+            ->get();
 
        return response()->json([
             'message' => 'Categories fetched successfully',
