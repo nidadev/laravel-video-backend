@@ -24,6 +24,7 @@
         <a href="{{ route('admin.subcategories.index') }}">📂 SubCategories</a>
 
     <a href="{{ route('admin.videos') }}">🎬 Videos</a>
+    <a href="{{ route('admin.videos.homeBanners') }}">🎞️ Home Banners</a>
         <a href="{{ route('admin.users.index') }}"> 👥 Manage User</a>
     <!--a href="{{ route('admin.trending.index') }}">🔥 Trending Videos</a-->
      <a href="{{ route('admin.videos.mostWatched') }}">

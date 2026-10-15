@@ -12,6 +12,8 @@ use App\Models\Season;
 use App\Models\VideoFile;
 use App\Services\MediaConvertService;
 use App\Services\MediaUrlService;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 
 class VideoController extends Controller
@@ -45,6 +47,48 @@ class VideoController extends Controller
 
     return view('admin.videos.index', compact('videos'));
 }
+
+    public function homeBanners()
+    {
+        $videos = Video::where('status', 'ready')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->get(['id', 'title', 'thumbnail', 'year_of_published']);
+
+        $selectedIds = Video::whereNotNull('home_banner_position')
+            ->orderBy('home_banner_position')
+            ->pluck('id')
+            ->all();
+
+        return view('admin.videos.home_banners', compact('videos', 'selectedIds'));
+    }
+
+    public function updateHomeBanners(Request $request)
+    {
+        $validated = $request->validate([
+            'banner_ids' => ['required', 'array', 'size:5'],
+            'banner_ids.*' => [
+                'nullable',
+                'integer',
+                Rule::exists('videos', 'id')->where('status', 'ready'),
+            ],
+        ]);
+
+        $selectedIds = array_values(array_filter($validated['banner_ids'], fn ($id) => $id !== null && $id !== ''));
+        if (count($selectedIds) !== count(array_unique($selectedIds))) {
+            return back()->withInput()->withErrors(['banner_ids' => 'Choose each video only once.']);
+        }
+
+        DB::transaction(function () use ($selectedIds) {
+            Video::whereNotNull('home_banner_position')->update(['home_banner_position' => null]);
+            foreach ($selectedIds as $index => $id) {
+                Video::whereKey($id)->update(['home_banner_position' => $index + 1]);
+            }
+        });
+
+        return redirect()->route('admin.videos.homeBanners')
+            ->with('success', 'Homepage banners updated.');
+    }
 
 
     public function create()

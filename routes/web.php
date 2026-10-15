@@ -72,6 +72,12 @@ Route::prefix('admin')
         Route::get('/videos', [VideoController::class, 'index'])
             ->name('admin.videos');
 
+        Route::get('/videos/home-banners', [VideoController::class, 'homeBanners'])
+            ->name('admin.videos.homeBanners');
+
+        Route::post('/videos/home-banners', [VideoController::class, 'updateHomeBanners'])
+            ->name('admin.videos.homeBanners.update');
+
         Route::get('/videos/upload-presigned', [VideoController::class, 'createPresigned'])
             ->name('admin.videos.presigned.create');
 
