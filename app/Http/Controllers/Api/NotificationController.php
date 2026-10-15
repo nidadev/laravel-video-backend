@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
-use Tymon\JWTAuth\Facades\JWTAuth;
 
 use Illuminate\Http\Request;
 use App\Models\Notification;
@@ -12,7 +11,7 @@ class NotificationController extends Controller
     //
       public function getnotify(Request $request)
     {
-        $user = JWTAuth::parseToken()->authenticate();
+        $user = $request->user();
 
         $notifications = Notification::where('user_id', $user->id)
                                     ->latest()

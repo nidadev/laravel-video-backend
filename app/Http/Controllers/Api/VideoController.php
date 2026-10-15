@@ -596,6 +596,10 @@ public function seeall(Request $request)
             {  
              $query->where('is_trending', 1)->orderBy('created_at', 'desc');
             }
+             elseif ($listType == 3)
+            {
+             $query->orderBy('created_at', 'desc')->orderBy('id', 'desc');
+            }
              else 
             {   
             $query->orderBy('views_count', 'desc')->orderBy('created_at', 'desc');
@@ -661,7 +665,7 @@ public function dashboard(Request $request)
     /* =====================================================
        1. BANNER VIDEOS (LATEST UPLOADS) - AS ARRAY OBJECTS
     ===================================================== */
-    $bannerQuery = Video::query();
+    $bannerQuery = Video::query()->where('status', 'ready');
 
     if ($categoryId) {
         $bannerQuery->where('category_id', $categoryId);
@@ -673,6 +677,7 @@ public function dashboard(Request $request)
 
     $bannerVideos = $bannerQuery
         ->orderBy('created_at', 'desc')
+        ->orderBy('id', 'desc')
         ->take(5)
         ->get([
             'id',
