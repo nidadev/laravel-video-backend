@@ -664,7 +664,7 @@ public function dashboard(Request $request)
     $subcategoryId = $request->subcategory_id;
 
     /* =====================================================
-       1. BANNER VIDEOS (LATEST UPLOADS) - AS ARRAY OBJECTS
+       1. BANNER VIDEOS (ADMIN SELECTION, OR LATEST UPLOADS)
     ===================================================== */
     $bannerQuery = Video::query()
         ->with(['files' => fn ($query) => $query
@@ -682,9 +682,16 @@ public function dashboard(Request $request)
         $bannerQuery->where('subcategory_id', $subcategoryId);
     }
 
+    $featuredQuery = clone $bannerQuery;
+    if ($featuredQuery->whereNotNull('home_banner_position')->exists()) {
+        $bannerQuery->whereNotNull('home_banner_position')
+            ->orderBy('home_banner_position');
+    } else {
+        $bannerQuery->orderBy('created_at', 'desc')
+            ->orderBy('id', 'desc');
+    }
+
     $bannerVideos = $bannerQuery
-        ->orderBy('created_at', 'desc')
-        ->orderBy('id', 'desc')
         ->take(5)
         ->get([
             'id',
