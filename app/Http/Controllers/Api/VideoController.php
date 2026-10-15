@@ -314,7 +314,8 @@ public function show(Request $request, $id)
            🎬 Filter episodes by season (optional)
         ------------------------------------ */
         $seasonId = $request->query('season_id');
-        $episodes = $video->files;
+        $episodeFiles = $video->files->reject(fn ($file) => strcasecmp(trim($file->variant ?? ''), 'Trailer') === 0);
+        $episodes = $episodeFiles;
 
         if ($seasonId) {
             $episodes = $episodes->where('season_id', $seasonId);
@@ -331,7 +332,7 @@ $episodes = $episodes
         /* ------------------------------------
            📦 Seasons list
         ------------------------------------ */
-        $seasonIds = $video->files->pluck('season_id')->unique()->filter();
+        $seasonIds = $episodeFiles->pluck('season_id')->unique()->filter();
 
         $seasons = Season::whereIn('id', $seasonIds)
             ->get(['id', 'name']);
@@ -596,6 +597,10 @@ public function seeall(Request $request)
             {  
              $query->where('is_trending', 1)->orderBy('created_at', 'desc');
             }
+             elseif ($listType == 3)
+            {
+             $query->orderBy('created_at', 'desc')->orderBy('id', 'desc');
+            }
              else 
             {   
             $query->orderBy('views_count', 'desc')->orderBy('created_at', 'desc');
@@ -661,7 +666,13 @@ public function dashboard(Request $request)
     /* =====================================================
        1. BANNER VIDEOS (LATEST UPLOADS) - AS ARRAY OBJECTS
     ===================================================== */
-    $bannerQuery = Video::query();
+    $bannerQuery = Video::query()
+        ->with(['files' => fn ($query) => $query
+            ->whereRaw('LOWER(variant) = ?', ['trailer'])
+            ->whereNotNull('file_url')
+            ->where('file_url', '!=', '')
+            ->orderByDesc('id')])
+        ->where('status', 'ready');
 
     if ($categoryId) {
         $bannerQuery->where('category_id', $categoryId);
@@ -673,6 +684,7 @@ public function dashboard(Request $request)
 
     $bannerVideos = $bannerQuery
         ->orderBy('created_at', 'desc')
+        ->orderBy('id', 'desc')
         ->take(5)
         ->get([
             'id',
@@ -683,7 +695,11 @@ public function dashboard(Request $request)
             'year_of_published',
             'category_id',
             'subcategory_id'
-        ])->map(fn ($video) => $this->formatVideo($video));
+        ])->map(function ($video) {
+            $data = $this->formatVideo($video);
+            $data['trailer_url'] = MediaUrlService::cdnUrl($video->files->first()?->file_url);
+            return $data;
+        });
 
 
     /* =====================================================

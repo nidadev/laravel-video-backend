@@ -63,7 +63,7 @@
 
           <div class="col-md-3">
             <label>Variant / Label (e.g. Episode 1, 720p)</label>
-            <input type="text" name="variants[]" class="form-control" placeholder="Episode 1">
+            <input type="text" name="variants[]" class="form-control" placeholder="Episode 1 / Trailer">
           </div>
 
           <div class="col-md-2">
