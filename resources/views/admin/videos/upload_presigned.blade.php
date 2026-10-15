@@ -72,7 +72,7 @@
           </div>
           <div class="col-md-3">
             <label>Variant / Label</label>
-            <input type="text" class="form-control variant" placeholder="Episode 1 / 720p">
+            <input type="text" class="form-control variant" placeholder="Episode 1 / Trailer">
           </div>
          <div class="col-md-2">
     <label>Season</label>

@@ -314,7 +314,7 @@ public function show(Request $request, $id)
            🎬 Filter episodes by season (optional)
         ------------------------------------ */
         $seasonId = $request->query('season_id');
-        $episodes = $video->files;
+        $episodes = $video->files->reject(fn ($file) => strcasecmp(trim($file->variant ?? ''), 'Trailer') === 0);
 
         if ($seasonId) {
             $episodes = $episodes->where('season_id', $seasonId);
@@ -331,7 +331,7 @@ $episodes = $episodes
         /* ------------------------------------
            📦 Seasons list
         ------------------------------------ */
-        $seasonIds = $video->files->pluck('season_id')->unique()->filter();
+        $seasonIds = $episodes->pluck('season_id')->unique()->filter();
 
         $seasons = Season::whereIn('id', $seasonIds)
             ->get(['id', 'name']);
@@ -665,7 +665,13 @@ public function dashboard(Request $request)
     /* =====================================================
        1. BANNER VIDEOS (LATEST UPLOADS) - AS ARRAY OBJECTS
     ===================================================== */
-    $bannerQuery = Video::query()->where('status', 'ready');
+    $bannerQuery = Video::query()
+        ->with(['files' => fn ($query) => $query
+            ->whereRaw('LOWER(variant) = ?', ['trailer'])
+            ->whereNotNull('file_url')
+            ->where('file_url', '!=', '')
+            ->orderByDesc('id')])
+        ->where('status', 'ready');
 
     if ($categoryId) {
         $bannerQuery->where('category_id', $categoryId);
@@ -688,7 +694,11 @@ public function dashboard(Request $request)
             'year_of_published',
             'category_id',
             'subcategory_id'
-        ])->map(fn ($video) => $this->formatVideo($video));
+        ])->map(function ($video) {
+            $data = $this->formatVideo($video);
+            $data['trailer_url'] = MediaUrlService::cdnUrl($video->files->first()?->file_url);
+            return $data;
+        });
 
 
     /* =====================================================
