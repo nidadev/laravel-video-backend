@@ -314,7 +314,8 @@ public function show(Request $request, $id)
            🎬 Filter episodes by season (optional)
         ------------------------------------ */
         $seasonId = $request->query('season_id');
-        $episodes = $video->files->reject(fn ($file) => strcasecmp(trim($file->variant ?? ''), 'Trailer') === 0);
+        $episodeFiles = $video->files->reject(fn ($file) => strcasecmp(trim($file->variant ?? ''), 'Trailer') === 0);
+        $episodes = $episodeFiles;
 
         if ($seasonId) {
             $episodes = $episodes->where('season_id', $seasonId);
@@ -331,7 +332,7 @@ $episodes = $episodes
         /* ------------------------------------
            📦 Seasons list
         ------------------------------------ */
-        $seasonIds = $episodes->pluck('season_id')->unique()->filter();
+        $seasonIds = $episodeFiles->pluck('season_id')->unique()->filter();
 
         $seasons = Season::whereIn('id', $seasonIds)
             ->get(['id', 'name']);
