@@ -314,6 +314,7 @@ public function show(Request $request, $id)
            🎬 Filter episodes by season (optional)
         ------------------------------------ */
         $seasonId = $request->query('season_id');
+        $trailerFile = $video->files->first(fn ($file) => strcasecmp(trim($file->variant ?? ''), 'Trailer') === 0);
         $episodeFiles = $video->files->reject(fn ($file) => strcasecmp(trim($file->variant ?? ''), 'Trailer') === 0);
         $episodes = $episodeFiles;
 
@@ -349,6 +350,13 @@ $episodes = $episodes
                 'year_of_published' => $video->year_of_published,
                 'is_bookmarked' => $isBookmarked, // 🔥 ADDED
             ],
+            'trailer' => $trailerFile ? [
+                'episode_id' => $trailerFile->id,
+                'title' => 'Trailer',
+                'season_id' => $trailerFile->season_id,
+                'url' => MediaUrlService::cdnUrl($trailerFile->file_url),
+                'thumbnail' => MediaUrlService::cdnUrl($trailerFile->image),
+            ] : null,
             'ads_enabled' => $ads_enabled,
             'seasons' => $seasons,
             'episodes' => $episodes->map(function ($file) {
