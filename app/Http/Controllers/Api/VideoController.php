@@ -1113,9 +1113,10 @@ public function applePayPurchase(Request $request)
         return \Illuminate\Support\Facades\DB::transaction(function () use ($request, $user, $plan, $verification, $startDate, $endDate, $transactionId, $originalTransactionId) {
             // A restored or renewed transaction may be submitted again by its owner,
             // but an Apple subscription lineage cannot be transferred to another user.
-            $existing = ApplePayPurchase::where('apple_original_transaction_id', $originalTransactionId)
-                ->lockForUpdate()->first();
-            if ($existing && (int) $existing->user_id !== (int) $user->id) {
+            $claimedByAnotherUser = ApplePayPurchase::where('apple_original_transaction_id', $originalTransactionId)
+                ->where('user_id', '!=', $user->id)
+                ->lockForUpdate()->exists();
+            if ($claimedByAnotherUser) {
                 return response()->json(['message' => 'Apple purchase belongs to another account', 'success' => false], 409);
             }
 
