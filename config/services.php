@@ -54,6 +54,9 @@ return [
 
     'cloudfront' => [
         'url' => env('CLOUDFRONT_URL', 'https://cdn.bitdrama.io'),
+        'key_pair_id' => env('CLOUDFRONT_KEY_PAIR_ID'),
+        'private_key_path' => env('CLOUDFRONT_PRIVATE_KEY_PATH'),
+        'cookie_ttl_seconds' => (int) env('CLOUDFRONT_COOKIE_TTL_SECONDS', 3600),
     ],
 
     'media' => [
@@ -74,6 +77,10 @@ return [
         'key_id' => env('APPLE_KEY_ID'),
         'private_key_path' => env('APPLE_PRIVATE_KEY_PATH'),
         'private_key' => env('APPLE_PRIVATE_KEY'),
+        'products' => [
+            'bytdrama_monthly' => 'Monthly',
+            'bytdrama_annual' => 'Annual',
+        ],
     ],
 
 ];

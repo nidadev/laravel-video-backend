@@ -32,42 +32,17 @@ class AppleAppStorePurchaseVerifier
     private function verifySignedTransactionPayload(array $payload): array
     {
         $transaction = $this->decodeSignedPayload($payload['purchase_token']);
+        $transactionId = $transaction['transactionId'] ?? null;
 
-        if (!$transaction) {
-            throw new RuntimeException('Apple signed transaction payload is invalid.');
+        // The client-supplied JWS is only a hint for looking up the transaction.
+        // Its payload is not trusted until Apple's server confirms the transaction.
+        if (!$transactionId || !$this->hasServerApiCredentials()) {
+            throw new RuntimeException('Apple transaction cannot be verified with the App Store Server API.');
         }
 
-        if (($transaction['bundleId'] ?? null) && config('services.apple.bundle_id') && $transaction['bundleId'] !== config('services.apple.bundle_id')) {
-            throw new RuntimeException('Apple transaction bundle id does not match.');
-        }
-
-        if (($transaction['productId'] ?? null) && !empty($payload['product_id']) && $transaction['productId'] !== $payload['product_id']) {
-            throw new RuntimeException('Apple transaction product id does not match.');
-        }
-
-        $transactionId = $transaction['transactionId'] ?? $payload['transaction_id'] ?? null;
-
-        if ($transactionId && $this->hasServerApiCredentials()) {
-            return $this->verifyTransaction(array_merge($payload, [
-                'transaction_id' => $transactionId,
-            ]));
-        }
-
-        $expiryTimeMillis = isset($transaction['expiresDate']) ? (int) $transaction['expiresDate'] : null;
-
-        if ($expiryTimeMillis && $expiryTimeMillis < now()->getTimestampMs()) {
-            throw new RuntimeException('Apple subscription is expired.');
-        }
-
-        return [
-            'source' => 'signed_transaction_payload',
-            'environment' => $transaction['environment'] ?? ($payload['environment'] ?? null),
-            'product_id' => $transaction['productId'] ?? $payload['product_id'] ?? null,
+        return $this->verifyTransaction(array_merge($payload, [
             'transaction_id' => $transactionId,
-            'original_transaction_id' => $transaction['originalTransactionId'] ?? $payload['original_transaction_id'] ?? null,
-            'expiry_time_millis' => $expiryTimeMillis,
-            'transaction' => $transaction,
-        ];
+        ]));
     }
 
     private function verifyReceipt(array $payload): array
@@ -137,10 +112,17 @@ class AppleAppStorePurchaseVerifier
     private function verifyTransaction(array $payload): array
     {
         $transactionId = $payload['transaction_id'];
+        $jwt = $this->serverApiJwt();
         $baseUrl = $this->serverApiBaseUrl($payload['environment'] ?? null);
-        $response = Http::withToken($this->serverApiJwt())
+        $response = Http::withToken($jwt)
             ->timeout(20)
             ->get($baseUrl . '/inApps/v1/transactions/' . rawurlencode($transactionId));
+
+        if (($response->json('errorCode') ?? null) === 4040010 && $baseUrl === $this->serverApiBaseUrl(null)) {
+            $response = Http::withToken($jwt)->timeout(20)->get(
+                $this->serverApiBaseUrl('sandbox') . '/inApps/v1/transactions/' . rawurlencode($transactionId)
+            );
+        }
 
         if (!$response->ok()) {
             throw new RuntimeException('Apple transaction verification failed.');
@@ -149,17 +131,25 @@ class AppleAppStorePurchaseVerifier
         $data = $response->json() ?: [];
         $transaction = $this->decodeSignedPayload($data['signedTransactionInfo'] ?? null);
 
-        if (($transaction['bundleId'] ?? null) && config('services.apple.bundle_id') && $transaction['bundleId'] !== config('services.apple.bundle_id')) {
+        if (!$transaction || ($transaction['transactionId'] ?? null) !== $transactionId) {
+            throw new RuntimeException('Apple transaction response is invalid.');
+        }
+
+        if (($transaction['bundleId'] ?? null) !== config('services.apple.bundle_id')) {
             throw new RuntimeException('Apple transaction bundle id does not match.');
         }
 
-        if (($transaction['productId'] ?? null) && !empty($payload['product_id']) && $transaction['productId'] !== $payload['product_id']) {
+        if (($transaction['productId'] ?? null) !== ($payload['product_id'] ?? null)) {
             throw new RuntimeException('Apple transaction product id does not match.');
+        }
+
+        if (!empty($transaction['revocationDate'])) {
+            throw new RuntimeException('Apple transaction has been revoked.');
         }
 
         $expiryTimeMillis = isset($transaction['expiresDate']) ? (int) $transaction['expiresDate'] : null;
 
-        if ($expiryTimeMillis && $expiryTimeMillis < now()->getTimestampMs()) {
+        if (!$expiryTimeMillis || $expiryTimeMillis < now()->getTimestampMs()) {
             throw new RuntimeException('Apple subscription is expired.');
         }
 
@@ -208,8 +198,8 @@ class AppleAppStorePurchaseVerifier
     private function serverApiBaseUrl(?string $environment): string
     {
         return strtolower((string) $environment) === 'sandbox'
-            ? 'https://api.storekit-sandbox.itunes.apple.com'
-            : 'https://api.storekit.itunes.apple.com';
+            ? 'https://api.storekit-sandbox.apple.com'
+            : 'https://api.storekit.apple.com';
     }
 
     private function serverApiJwt(): string

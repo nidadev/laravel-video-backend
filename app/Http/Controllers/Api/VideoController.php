@@ -1056,7 +1056,7 @@ public function googlePayPurchase(Request $request)
 public function applePayPurchase(Request $request)
 {
     $request->validate([
-        'user_id' => 'required|exists:users,id',
+        'user_id' => 'nullable|exists:users,id',
         'plan_id' => 'required|exists:plans,id',
         'purchase_date' => 'nullable|date',
         'purchase_token' => 'nullable|string',
@@ -1078,8 +1078,15 @@ public function applePayPurchase(Request $request)
     }
 
     try {
-        $user = User::findOrFail($request->user_id);
+        $user = $request->user();
+        if (!$user || ($request->filled('user_id') && (int) $request->user_id !== (int) $user->id)) {
+            return response()->json(['message' => 'Purchase account does not match the signed-in user', 'success' => false], 403);
+        }
         $plan = Plan::findOrFail($request->plan_id);
+        $expectedPlanName = config('services.apple.products.' . $request->product_id);
+        if (!$expectedPlanName || strcasecmp($plan->name, $expectedPlanName) !== 0) {
+            return response()->json(['message' => 'Apple product does not match the selected plan', 'success' => false], 422);
+        }
         $verification = app(AppleAppStorePurchaseVerifier::class)->verifySubscription($request->all());
 
         if (!empty($verification['product_id']) && $verification['product_id'] !== $request->product_id) {
@@ -1091,17 +1098,38 @@ public function applePayPurchase(Request $request)
             ], 422);
         }
 
-        $startDate = $request->filled('purchase_date')
-            ? Carbon::parse($request->purchase_date)->startOfDay()
-            : now();
+        $startDate = now();
 
         $endDate = !empty($verification['expiry_time_millis'])
             ? Carbon::createFromTimestampMs($verification['expiry_time_millis'])
             : $startDate->copy()->addDays($plan->duration_days - 1)->endOfDay();
 
-        $transactionId = $verification['transaction_id']
-            ?? $request->transaction_id
-            ?? $request->purchase_token;
+        $transactionId = $verification['transaction_id'] ?? null;
+        $originalTransactionId = $verification['original_transaction_id'] ?? null;
+        if (!$transactionId || !$originalTransactionId || !$verification['expiry_time_millis']) {
+            throw new \RuntimeException('Verified Apple transaction is incomplete.');
+        }
+
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($request, $user, $plan, $verification, $startDate, $endDate, $transactionId, $originalTransactionId) {
+            // A restored or renewed transaction may be submitted again by its owner,
+            // but an Apple subscription lineage cannot be transferred to another user.
+            $existing = ApplePayPurchase::where('apple_original_transaction_id', $originalTransactionId)
+                ->lockForUpdate()->first();
+            if ($existing && (int) $existing->user_id !== (int) $user->id) {
+                return response()->json(['message' => 'Apple purchase belongs to another account', 'success' => false], 409);
+            }
+
+            \Illuminate\Support\Facades\DB::table('apple_purchase_owners')->insertOrIgnore([
+                'original_transaction_id' => $originalTransactionId,
+                'user_id' => $user->id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            $ownerId = \Illuminate\Support\Facades\DB::table('apple_purchase_owners')
+                ->where('original_transaction_id', $originalTransactionId)->value('user_id');
+            if ((int) $ownerId !== (int) $user->id) {
+                return response()->json(['message' => 'Apple purchase belongs to another account', 'success' => false], 409);
+            }
 
         $payment = ApplePayPurchase::updateOrCreate(
             [
@@ -1111,7 +1139,7 @@ public function applePayPurchase(Request $request)
             [
                 'user_id' => $user->id,
                 'plan_id' => $plan->id,
-                'apple_original_transaction_id' => $verification['original_transaction_id'] ?? $request->original_transaction_id,
+                'apple_original_transaction_id' => $originalTransactionId,
                 'payment_response' => [
                     'payment_method' => $request->payment_method ?: 'Apple In-App Purchase',
                     'purchase_date' => $startDate->toDateTimeString(),
@@ -1152,15 +1180,20 @@ public function applePayPurchase(Request $request)
             'response' => 200,
             'success' => true,
         ], 200);
+        });
     } catch (\Exception $e) {
         \Log::error('Apple Pay Error: ' . $e->getMessage());
+
+        $status = str_contains($e->getMessage(), 'credentials are not configured')
+            || str_contains($e->getMessage(), 'cannot be verified with the App Store Server API')
+            ? 503 : (str_starts_with($e->getMessage(), 'Apple ') ? 422 : 500);
 
         return response()->json([
             'message' => 'Apple purchase could not be verified',
             'data' => [],
-            'response' => 500,
+            'response' => $status,
             'success' => false,
-        ], 500);
+        ], $status);
     }
 }
 

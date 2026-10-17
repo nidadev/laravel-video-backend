@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\TrendingVideoController;
 use App\Http\Controllers\Api\UserApiController;
 use App\Http\Controllers\Api\SubcategoryController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\MediaAccessController;
 
 
 
@@ -27,6 +28,7 @@ Route::get('/admin/login', function () {
 
 
 Route::middleware(['jwt.auth'])->group(function () {
+    Route::get('/media-access', [MediaAccessController::class, 'show']);
     
     // User Routes
     //Route::get('/user-profile', [UserController::class, 'profile']);
