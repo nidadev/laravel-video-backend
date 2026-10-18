@@ -6,14 +6,14 @@ use RuntimeException;
 
 class CloudFrontCookieSigner
 {
-    public function issue(): array
+    public function issue(int $fileId): array
     {
         $cdn = rtrim((string) config('services.cloudfront.url'), '/');
         $keyId = (string) config('services.cloudfront.key_pair_id');
         $keyPath = (string) config('services.cloudfront.private_key_path');
         $ttl = (int) config('services.cloudfront.cookie_ttl_seconds', 3600);
 
-        if (!str_starts_with($cdn, 'https://') || !$keyId || !$keyPath || !is_readable($keyPath) || $ttl < 60 || $ttl > 7200) {
+        if (!str_starts_with($cdn, 'https://') || !$keyId || !$keyPath || !is_readable($keyPath) || $ttl < 60 || $ttl > 7200 || $fileId < 1) {
             throw new RuntimeException('CloudFront viewer signing is not configured.');
         }
 
@@ -25,7 +25,7 @@ class CloudFrontCookieSigner
         $expires = time() + $ttl;
         $policy = json_encode([
             'Statement' => [[
-                'Resource' => $cdn . '/*',
+                'Resource' => $cdn . '/hls/' . $fileId . '/*',
                 'Condition' => ['DateLessThan' => ['AWS:EpochTime' => $expires]],
             ]],
         ], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
@@ -38,6 +38,7 @@ class CloudFrontCookieSigner
 
         return [
             'cdn_url' => $cdn,
+            'file_id' => $fileId,
             'expires_at' => $expires,
             'cookies' => [
                 'CloudFront-Policy' => $encode($policy),
