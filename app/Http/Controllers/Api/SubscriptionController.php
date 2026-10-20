@@ -245,12 +245,17 @@ if (!empty($user->device_token)) {
     }
 }
 
-public function getPlanDetails()
+public function getPlanDetails(Request $request)
 {
     try {
+        // Explicit market selection keeps older app builds on their current
+        // products until the Pakistan storefront builds have been released.
+        $names = strtoupper((string) $request->query('market')) === 'PK'
+            ? ['Pakistan Monthly', 'Pakistan Annual']
+            : ['Monthly', 'Annual'];
         $plans = Plan::select('id', 'name', 'price', 'duration_days', 'ads_enabled')
-            ->whereIn('name', ['Monthly', 'Annual'])
-            ->orderByRaw("CASE name WHEN 'Monthly' THEN 1 WHEN 'Annual' THEN 2 ELSE 3 END")
+            ->whereIn('name', $names)
+            ->orderBy('duration_days')
             ->get();
 
         if ($plans->isEmpty()) {

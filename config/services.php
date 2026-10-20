@@ -80,6 +80,8 @@ return [
         'products' => [
             'bytdrama_monthly' => 'Monthly',
             'bytdrama_annual' => 'Annual',
+            'bytdrama_pk_adfree_monthly' => 'Pakistan Monthly',
+            'bytdrama_pk_adfree_annual' => 'Pakistan Annual',
         ],
     ],
 

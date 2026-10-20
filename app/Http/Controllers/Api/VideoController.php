@@ -976,6 +976,16 @@ public function googlePayPurchase(Request $request)
     try {
         $user = User::findOrFail($request->user_id);
         $plan = Plan::findOrFail($request->plan_id);
+        $pakistanProducts = [
+            'bytdrama_pk_adfree' => 'Pakistan Monthly',
+            'bytdrama_pk_adfree_annual' => 'Pakistan Annual',
+        ];
+        if (isset($pakistanProducts[$request->product_id]) && $plan->name !== $pakistanProducts[$request->product_id]) {
+            return response()->json(['message' => 'Google Play product does not match the selected plan', 'success' => false], 422);
+        }
+        if (!isset($pakistanProducts[$request->product_id]) && str_starts_with($plan->name, 'Pakistan ')) {
+            return response()->json(['message' => 'Pakistan plan requires its matching Google Play product', 'success' => false], 422);
+        }
         $verification = app(GooglePlayPurchaseVerifier::class)->verifySubscription(
             $request->purchase_token,
             $request->product_id,
