@@ -37,5 +37,16 @@ class PlanSeeder extends Seeder
                 'ads_enabled' => false,
             ]
         );
+
+        // Pakistan has a separate, ad-free offer; prices shown at checkout
+        // come from the local App Store / Google Play product, not this field.
+        Plan::updateOrCreate(
+            ['name' => 'Pakistan Monthly'],
+            ['price' => 1.90, 'duration_days' => 30, 'ads_enabled' => false]
+        );
+        Plan::updateOrCreate(
+            ['name' => 'Pakistan Annual'],
+            ['price' => 22.80, 'duration_days' => 365, 'ads_enabled' => false]
+        );
     }
 }
