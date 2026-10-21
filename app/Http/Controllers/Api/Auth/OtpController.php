@@ -306,7 +306,7 @@ private function sendSmsOtp(string $phone, int $otp): void
     }
 
     $params = [
-        'body' => 'Your BytDrama verification code is ' . $otp,
+        'body' => 'Your BYTDrama verification code is ' . $otp,
     ];
 
     if ($messagingServiceSid) {
