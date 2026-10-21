@@ -6,6 +6,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
+use Illuminate\Mail\Mailables\Address;
 use Illuminate\Queue\SerializesModels;
 
 class SendOtpMail extends Mailable
@@ -23,7 +24,8 @@ class SendOtpMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Your OTP Code'
+            from: new Address(config('mail.from.address'), 'BYTDrama'),
+            subject: 'Your BYTDrama verification code'
         );
     }
 
