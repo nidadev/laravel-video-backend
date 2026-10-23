@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\UserApiController;
 use App\Http\Controllers\Api\SubcategoryController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\MediaAccessController;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 
 
@@ -80,6 +81,26 @@ Route::middleware(['auth:sanctum', 'is_admin1'])->group(function () {
 Route::prefix('auth')->group(function () {
     Route::post('send-otp', [OtpController::class, 'sendOtp']);
     Route::post('verify-otp', [OtpController::class, 'verifyOtp']);
+    Route::post('refresh', function () {
+        try {
+            $token = JWTAuth::parseToken()->refresh();
+
+            return response()->json([
+                'response' => 200,
+                'message' => 'Token refreshed successfully',
+                'data' => [
+                    'token' => $token,
+                    'token_type' => 'bearer',
+                    'expires_in' => JWTAuth::factory()->getTTL() * 60,
+                ],
+            ]);
+        } catch (\Throwable $exception) {
+            return response()->json([
+                'response' => 401,
+                'message' => 'Token could not be refreshed',
+            ], 401);
+        }
+    });
 });
          Route::get('/plans', [SubscriptionController::class, 'getPlanDetails']);
 
