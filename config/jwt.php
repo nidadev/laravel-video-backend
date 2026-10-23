@@ -120,7 +120,8 @@ return [
     |
     */
 
-    'refresh_ttl' => env('JWT_REFRESH_TTL', 20160),
+    // Keep mobile sessions active for 90 days, while still allowing revocation.
+    'refresh_ttl' => env('JWT_REFRESH_TTL', 129600),
 
     /*
     |--------------------------------------------------------------------------
