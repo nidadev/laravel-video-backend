@@ -11,8 +11,7 @@
         <th>Thumbnail</th>
         <th>Title</th>
         <th>Category</th>
-        <!--th>Views</th>
-        <th>Last Viewed</th-->
+        <th class="text-end">Views</th>
       </tr>
     </thead>
     <tbody>
@@ -22,8 +21,7 @@
         <td><img src="{{ $video->thumbnail }}" alt="" width="100" class="rounded shadow-sm"></td>
         <td>{{ $video->title }}</td>
         <td>{{ $video->category->name ?? '-' }}</td>
-        <!--td><strong>{{ $video->views_count }}</strong></td>
-        <td>{{ optional($video->views->last())->created_at?->diffForHumans() ?? '-' }}</td-->
+        <td class="text-end"><strong>{{ number_format($video->views_count) }}</strong></td>
       </tr>
       @endforeach
     </tbody>
