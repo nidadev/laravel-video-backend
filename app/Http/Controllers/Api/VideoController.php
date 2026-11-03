@@ -321,14 +321,19 @@ public function show(Request $request, $id)
         if ($seasonId) {
             $episodes = $episodes->where('season_id', $seasonId);
         }
-        // Sort by id ascending
-//$episodes = $episodes->sortBy('id')->values();
-$episodes = $episodes
-    ->sortBy(function ($episode) {
-        preg_match('/(\d+)/', $episode->variant, $matches);
-        return isset($matches[1]) ? (int) $matches[1] : 0;
-    })
-    ->values();
+        // Keep episodes in numeric order across clients. Legacy CMS records can
+        // have inconsistent season IDs, so season metadata must not put later
+        // episode numbers ahead of earlier episodes.
+        $episodes = $episodes->sort(function ($left, $right) {
+            preg_match('/(\d+)/', trim($left->variant ?? ''), $leftMatch);
+            preg_match('/(\d+)/', trim($right->variant ?? ''), $rightMatch);
+            $leftNumber = isset($leftMatch[1]) ? (int) $leftMatch[1] : PHP_INT_MAX;
+            $rightNumber = isset($rightMatch[1]) ? (int) $rightMatch[1] : PHP_INT_MAX;
+
+            return ($leftNumber <=> $rightNumber)
+                ?: (($left->season_id ?? 0) <=> ($right->season_id ?? 0))
+                ?: ($left->id <=> $right->id);
+        })->values();
 
         /* ------------------------------------
            📦 Seasons list
@@ -352,6 +357,7 @@ $episodes = $episodes
             ],
             'trailer' => $trailerFile ? [
                 'episode_id' => $trailerFile->id,
+                'video_id' => $video->id,
                 'title' => 'Trailer',
                 'season_id' => $trailerFile->season_id,
                 'url' => MediaUrlService::cdnUrl($trailerFile->file_url),
@@ -359,9 +365,10 @@ $episodes = $episodes
             ] : null,
             'ads_enabled' => $ads_enabled,
             'seasons' => $seasons,
-            'episodes' => $episodes->map(function ($file) {
+            'episodes' => $episodes->map(function ($file) use ($video) {
                 return [
                     'episode_id' => $file->id,
+                    'video_id' => $video->id,
                     'title' => $file->variant,
                     'season_id' => $file->season_id,
                     'url' => MediaUrlService::cdnUrl($file->file_url),
