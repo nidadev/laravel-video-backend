@@ -29,7 +29,20 @@ class MediaAccessController extends Controller
         }
 
         $file = VideoFile::with('video:id,status')->find($validated['file_id']);
-        if (!$file || !$file->video || $file->video->status !== 'ready') {
+        if (!$file || !$file->video || $file->video->status === 'disabled') {
+            return response()->json(['message' => 'Video unavailable.'], 404);
+        }
+
+        // A series can remain in processing while its other episodes are still
+        // transcoding. Allow playback only for this specific completed HLS file;
+        // older ready/published files without MediaConvert tracking stay compatible.
+        $videoStatus = $file->video->status;
+        $supportedVideoStatus = in_array($videoStatus, ['ready', 'published', 'processing'], true);
+        $fileProcessingComplete = $file->job_status === 'COMPLETE';
+        $legacyReadyFile = in_array($videoStatus, ['ready', 'published'], true)
+            && $file->job_status === null;
+
+        if (!$supportedVideoStatus || (!$fileProcessingComplete && !$legacyReadyFile)) {
             return response()->json(['message' => 'Video unavailable.'], 404);
         }
 
