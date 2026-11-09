@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\VideoFile;
+use App\Services\HlsAssetValidator;
 use App\Services\MediaConvertService;
 use App\Services\MediaUrlService;
 use Illuminate\Console\Command;
@@ -13,7 +14,7 @@ class SyncMediaConvertJobs extends Command
 
     protected $description = 'Sync MediaConvert job status and mark videos ready only after all jobs complete.';
 
-    public function handle(MediaConvertService $mediaConvert): int
+    public function handle(MediaConvertService $mediaConvert, HlsAssetValidator $hlsAssetValidator): int
     {
         $files = VideoFile::with('video')
             ->whereNotNull('job_id')
@@ -26,14 +27,21 @@ class SyncMediaConvertJobs extends Command
                 $status = $job['Job']['Status'] ?? null;
                 $errorMessage = $job['Job']['ErrorMessage'] ?? null;
 
-                $file->update([
-                    'job_status' => $status,
-                    'job_error' => $errorMessage,
-                ]);
+                if ($status === 'COMPLETE') {
+                    if (!$file->manifest_url) {
+                        throw new \RuntimeException("MediaConvert completed without an HLS manifest for video file {$file->id}.");
+                    }
 
-                if ($status === 'COMPLETE' && $file->manifest_url) {
+                    $hlsAssetValidator->assertComplete($file);
                     $file->update([
+                        'job_status' => 'COMPLETE',
+                        'job_error' => null,
                         'file_url' => MediaUrlService::cdnUrl($file->manifest_url),
+                    ]);
+                } else {
+                    $file->update([
+                        'job_status' => $status,
+                        'job_error' => $errorMessage,
                     ]);
                 }
 
