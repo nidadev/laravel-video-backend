@@ -81,7 +81,9 @@ Route::middleware(['auth:sanctum', 'is_admin1'])->group(function () {
 Route::prefix('auth')->group(function () {
     Route::post('send-otp', [OtpController::class, 'sendOtp']);
     Route::post('verify-otp', [OtpController::class, 'verifyOtp']);
-    Route::post('refresh', function () {
+    // Keep GET temporarily for already-installed iOS builds that refresh using
+    // GET. Newer clients should use POST. Never allow caches to retain tokens.
+    Route::match(['GET', 'POST'], 'refresh', function () {
         try {
             $token = JWTAuth::parseToken()->refresh();
 
@@ -93,12 +95,14 @@ Route::prefix('auth')->group(function () {
                     'token_type' => 'bearer',
                     'expires_in' => JWTAuth::factory()->getTTL() * 60,
                 ],
-            ]);
+            ])->header('Cache-Control', 'private, no-store, max-age=0')
+                ->header('Pragma', 'no-cache');
         } catch (\Throwable $exception) {
             return response()->json([
                 'response' => 401,
                 'message' => 'Token could not be refreshed',
-            ], 401);
+            ], 401)->header('Cache-Control', 'private, no-store, max-age=0')
+                ->header('Pragma', 'no-cache');
         }
     });
 });
